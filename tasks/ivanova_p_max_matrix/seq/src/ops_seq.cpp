@@ -23,7 +23,7 @@ bool IvanovaPMaxMatrixSEQ::ValidationImpl() {
 
   // Проверяем все строки
   int cols = GetInput()[0].size();
-  for (int i = 0; i < GetInput().size(); i++) {
+ for (size_t i = 0; i < GetInput().size(); i++) {
     if (GetInput()[i].size() != cols) {
       return false;
     }
@@ -42,8 +42,8 @@ bool IvanovaPMaxMatrixSEQ::RunImpl() {
   int max_val = std::numeric_limits<int>::min();
 
   // Простой двойной цикл по матрице
-  for (int i = 0; i < GetInput().size(); i++) {
-    for (int j = 0; j < GetInput()[i].size(); j++) {
+  for(size_t i = 0; i < GetInput().size(); i++) {
+    for (size_t j = 0; j < GetInput()[i].size(); j++) {
       if (GetInput()[i][j] > max_val) {
         max_val = GetInput()[i][j];
       }

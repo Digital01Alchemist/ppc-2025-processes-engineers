@@ -1,0 +1,17 @@
+[2025-11-19 00:51:52] [info] Start Program:
+Path:"D:\\Programming\\Parallel programming\\ppc-2025-processes-engineers\\build\\bin\\Debug\\ppc_func_tests.exe"
+Arguments:--gtest_filter=*IvanovaPMaxMatrix*SEQ* 
+Working directory: not set.
+Modules: Selected: * Excluded: 
+Sources: Selected: D:\Programming\Parallel programming\ppc-2025-processes-engineers\tasks\ivanova_p_max_matrix\** Excluded: 
+Log Level: Normal
+Cover Children: 0
+Aggregate by file: 1
+Continue after C++ exception: 0
+Optimized build support: 0
+Export: cobertura D:\Programming\Parallel programming\ppc-2025-processes-engineers\build\coverage.xml 
+Input coverage: 
+Unified diff: 
+Excluded line regular expressions: 
+Substitute pdb source paths: 
+[2025-11-19 00:51:52] [error] Error: Cannot find path: D:\Programming\Parallel programming\ppc-2025-processes-engineers\build\bin\Debug\ppc_func_tests.exe

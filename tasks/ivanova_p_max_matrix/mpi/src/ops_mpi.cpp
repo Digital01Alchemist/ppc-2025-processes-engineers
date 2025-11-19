@@ -21,9 +21,9 @@ bool IvanovaPMaxMatrixMPI::ValidationImpl() {
     return false;  // Пустая матрица невалидна
   }
 
-  int cols = GetInput()[0].size();
+  size_t cols = GetInput()[0].size();
   for (size_t i = 0; i < GetInput().size(); i++) {
-    if (GetInput()[i].empty() || GetInput()[i].size() != static_cast<size_t>(cols)) {
+    if (GetInput()[i].empty() || GetInput()[i].size() != cols) {
       return false;
     }
   }

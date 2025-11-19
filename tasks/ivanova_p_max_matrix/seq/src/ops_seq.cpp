@@ -22,7 +22,7 @@ bool IvanovaPMaxMatrixSEQ::ValidationImpl() {
   }
 
   // Проверяем все строки
-  int cols = GetInput()[0].size();
+  size_t cols = GetInput()[0].size();
   for (size_t i = 0; i < GetInput().size(); i++) {
     if (GetInput()[i].size() != cols) {
       return false;

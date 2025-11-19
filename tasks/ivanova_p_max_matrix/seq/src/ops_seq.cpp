@@ -10,9 +10,15 @@
 namespace ivanova_p_max_matrix {
 
 IvanovaPMaxMatrixSEQ::IvanovaPMaxMatrixSEQ(const InType &in) {
-  SetTypeOfTask(GetStaticTypeOfTask());           // Нужно в любом случае!!!
-  GetInput() = in;                                // и тут, но не знач
-  GetOutput() = std::numeric_limits<int>::min();  // и тут, но не знач
+  SetTypeOfTask(GetStaticTypeOfTask());
+
+  // Безопасная инициализация
+  GetInput().clear();
+  if (!in.empty()) {
+    GetInput() = in;
+  }
+
+  GetOutput() = std::numeric_limits<int>::min();
 }
 
 bool IvanovaPMaxMatrixSEQ::ValidationImpl() {

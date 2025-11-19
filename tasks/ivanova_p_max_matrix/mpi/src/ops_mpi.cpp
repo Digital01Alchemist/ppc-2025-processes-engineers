@@ -12,7 +12,14 @@ namespace ivanova_p_max_matrix {
 
 IvanovaPMaxMatrixMPI::IvanovaPMaxMatrixMPI(const InType &in) {
   SetTypeOfTask(GetStaticTypeOfTask());
-  GetInput() = in;
+
+  // Используем reserve и push_back для безопасного копирования
+  GetInput().clear();
+  GetInput().reserve(in.size());
+  for (const auto &row : in) {
+    GetInput().push_back(row);
+  }
+
   GetOutput() = std::numeric_limits<int>::min();
 }
 

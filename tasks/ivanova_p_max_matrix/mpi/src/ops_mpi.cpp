@@ -3,8 +3,7 @@
 #include <mpi.h>
 
 #include <algorithm>
-#include <cstddef>   // для size_t
-#include <iostream>  // для std::cout, если используется
+#include <cstddef>  // Добавлено для size_t
 #include <limits>
 #include <vector>
 
@@ -49,17 +48,16 @@ bool IvanovaPMaxMatrixMPI::PreProcessingImpl() {
 bool IvanovaPMaxMatrixMPI::RunImpl() {
   const auto &input = GetInput();
 
-  int world_size = 0;  // Исправлено: раздельная инициализация
-  int world_rank = 0;  // Исправлено: раздельная инициализация
+  int world_size = 0;
+  int world_rank = 0;
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
-  int rows = 0;
-  int cols = 0;  // Исправлено: раздельная инициализация
+  int rows = 0, cols = 0;
 
   if (world_rank == 0) {
     rows = static_cast<int>(input.size());
-    cols = (rows > 0 ? static_cast<int>(input[0].size()) : 0);  // Исправлено: явное приведение
+    cols = (rows > 0 ? input[0].size() : 0);
   }
 
   // Рассылаем размеры всем
@@ -78,16 +76,16 @@ bool IvanovaPMaxMatrixMPI::RunImpl() {
   int base = rows / world_size;
   int rem = rows % world_size;
 
-  for (int rank_index = 0; rank_index < world_size; ++rank_index) {  // Исправлено: более длинное имя
-    rows_per_rank[rank_index] = base + (rank_index < rem ? 1 : 0);
+  for (int rank = 0; rank < world_size; ++rank) {
+    rows_per_rank[rank] = base + (rank < rem ? 1 : 0);
   }
 
   std::vector<int> sendcounts(world_size);
   std::vector<int> displs(world_size);
 
-  for (int rank_index = 0; rank_index < world_size; ++rank_index) {  // Исправлено: более длинное имя
-    sendcounts[rank_index] = rows_per_rank[rank_index] * cols;
-    displs[rank_index] = (rank_index == 0 ? 0 : displs[rank_index - 1] + sendcounts[rank_index - 1]);
+  for (int r = 0; r < world_size; ++r) {
+    sendcounts[r] = rows_per_rank[r] * cols;
+    displs[r] = (r == 0 ? 0 : displs[r - 1] + sendcounts[r - 1]);
   }
 
   // -------------------------------------------
@@ -95,7 +93,7 @@ bool IvanovaPMaxMatrixMPI::RunImpl() {
   // -------------------------------------------
   std::vector<int> flat;
   if (world_rank == 0) {
-    flat.resize(static_cast<size_t>(rows) * static_cast<size_t>(cols));  // Исправлено: явное приведение
+    flat.resize(static_cast<std::size_t>(rows) * static_cast<std::size_t>(cols));
     int pos = 0;
     for (int i = 0; i < rows; ++i) {
       for (int j = 0; j < cols; ++j) {
@@ -118,7 +116,7 @@ bool IvanovaPMaxMatrixMPI::RunImpl() {
   // -------------------------------------------
   int local_max = std::numeric_limits<int>::min();
   for (int value : local_flat) {
-    local_max = std::max(value, local_max);  // Исправлено: std::max вместо ручной проверки
+    local_max = std::max(value, local_max);
   }
 
   // -------------------------------------------

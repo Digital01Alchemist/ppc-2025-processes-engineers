@@ -1,9 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <array>
-#include <cstddef>   // Добавлено для std::size_t
-#include <iostream>  // Добавлено для std::cout
-#include <limits>    // Добавлено для std::numeric_limits
 #include <string>
 #include <tuple>
 
@@ -23,8 +20,6 @@ class IvanovaPMaxMatrixFuncTests : public ppc::util::BaseRunFuncTests<InType, Ou
   }
 
  protected:
-  IvanovaPMaxMatrixFuncTests() : matrix_size_(0), expected_max_(0) {}  // Исправлено: инициализация членов
-
   void SetUp() override {
     TestType params = std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
     matrix_size_ = std::get<0>(params);
@@ -43,19 +38,20 @@ class IvanovaPMaxMatrixFuncTests : public ppc::util::BaseRunFuncTests<InType, Ou
     int actual_max = std::numeric_limits<int>::min();
     for (const auto &row : test_matrix_) {
       for (int val : row) {
-        actual_max = std::max(val, actual_max);  // Исправлено: std::max вместо >
+        if (val > actual_max) {
+          actual_max = val;
+        }
       }
     }
 
     std::cout << "Test Setup: Matrix " << matrix_size_ << "x" << matrix_size_ << " - Expected max: " << expected_max_
-              << ", Actual max: " << actual_max << '\n';  // Исправлено: '\n' вместо std::endl
+              << ", Actual max: " << actual_max << std::endl;
   }
 
   bool CheckTestOutputData(OutType &output_data) final {
     bool result = (expected_max_ == output_data);
     if (!result) {
-      std::cout << "ERROR: Expected " << expected_max_ << " but got " << output_data
-                << '\n';  // Исправлено: '\n' вместо std::endl
+      std::cout << "ERROR: Expected " << expected_max_ << " but got " << output_data << std::endl;
     }
     return result;
   }
@@ -80,7 +76,7 @@ TEST_P(IvanovaPMaxMatrixFuncTests, FindMatrixMax) {
 // Дополнительные тесты для особых случаев
 class IvanovaPMaxMatrixSpecialTests : public ::testing::Test {
  protected:
-  static void TestEmptyMatrix() {  // Исправлено: static
+  void TestEmptyMatrix() {
     InType empty_matrix;
     IvanovaPMaxMatrixSEQ task(empty_matrix);
     EXPECT_FALSE(task.Validation());
@@ -89,7 +85,7 @@ class IvanovaPMaxMatrixSpecialTests : public ::testing::Test {
     EXPECT_TRUE(task.PostProcessing());
   }
 
-  static void TestJaggedMatrix() {         // Исправлено: static
+  void TestJaggedMatrix() {
     InType jagged_matrix = {{1, 2}, {3}};  // Разные длины строк
     IvanovaPMaxMatrixSEQ task(jagged_matrix);
     EXPECT_FALSE(task.Validation());
@@ -98,7 +94,7 @@ class IvanovaPMaxMatrixSpecialTests : public ::testing::Test {
     EXPECT_TRUE(task.PostProcessing());
   }
 
-  static void TestSingleElement() {  // Исправлено: static
+  void TestSingleElement() {
     InType single_element = {{42}};
     IvanovaPMaxMatrixSEQ task(single_element);
 
@@ -110,7 +106,7 @@ class IvanovaPMaxMatrixSpecialTests : public ::testing::Test {
     EXPECT_EQ(task.GetOutput(), 42);
   }
 
-  static void TestKnownMaxMatrix() {  // Исправлено: static
+  void TestKnownMaxMatrix() {
     // Матрица 3x3 с известным максимумом 3
     InType matrix = {
         {1, 2, 1}, {2, 1, 2}, {1, 3, 1}  // Максимум = 3

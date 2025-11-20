@@ -2,6 +2,7 @@
 
 #include <string>
 #include <tuple>
+#include <vector>  // Добавлено для std::vector
 
 #include "task/include/task.hpp"
 

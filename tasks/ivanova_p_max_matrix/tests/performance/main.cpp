@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <iostream>  // Добавлено для std::cout
+#include <limits>    // Добавлено для std::numeric_limits
+
 #include "ivanova_p_max_matrix/common/include/common.hpp"
 #include "ivanova_p_max_matrix/data/matrix_generator.hpp"
 #include "ivanova_p_max_matrix/mpi/include/ops_mpi.hpp"
@@ -17,7 +20,7 @@ class IvanovaPMaxMatrixPerfTests : public ppc::util::BaseRunPerfTests<InType, Ou
 
   void GenerateTestMatrix() {
     // Генерируем большую матрицу 10000x10000 для нагрузочного тестирования
-    const int perf_matrix_size = 10000;
+    const int perf_matrix_size = 100000;
     input_data_ = data::MatrixGenerator::GenerateSquareMatrixWithKnownMax(perf_matrix_size);
     expected_max_ = perf_matrix_size;
 
@@ -25,14 +28,13 @@ class IvanovaPMaxMatrixPerfTests : public ppc::util::BaseRunPerfTests<InType, Ou
     int actual_max = std::numeric_limits<int>::min();
     for (const auto &row : input_data_) {
       for (int val : row) {
-        if (val > actual_max) {
-          actual_max = val;
-        }
+        actual_max = std::max(val, actual_max);  // Исправлено: std::max вместо >
       }
     }
 
     std::cout << "Perf Test: Matrix " << perf_matrix_size << "x" << perf_matrix_size
-              << " - Expected max: " << expected_max_ << ", Actual max: " << actual_max << std::endl;
+              << " - Expected max: " << expected_max_ << ", Actual max: " << actual_max
+              << '\n';  // Исправлено: '\n' вместо std::endl
   }
 
   bool CheckTestOutputData(OutType &output_data) final {

@@ -1,11 +1,12 @@
 #include "ivanova_p_max_matrix/seq/include/ops_seq.hpp"
 
 #include <algorithm>
+#include <cstddef>  // Добавлено для size_t
 #include <limits>
 #include <vector>
 
 #include "ivanova_p_max_matrix/common/include/common.hpp"
-#include "util/include/util.hpp"
+// Убрал "util/include/util.hpp" так как он не используется
 
 namespace ivanova_p_max_matrix {
 
@@ -29,8 +30,8 @@ bool IvanovaPMaxMatrixSEQ::ValidationImpl() {
 
   // Проверяем все строки
   size_t cols = GetInput()[0].size();
-  for (size_t i = 0; i < GetInput().size(); i++) {
-    if (GetInput()[i].size() != cols) {
+  for (const auto &row : GetInput()) {  // Исправлено: range-based for
+    if (row.size() != cols) {
       return false;
     }
   }
@@ -48,11 +49,9 @@ bool IvanovaPMaxMatrixSEQ::RunImpl() {
   int max_val = std::numeric_limits<int>::min();
 
   // Простой двойной цикл по матрице
-  for (size_t i = 0; i < GetInput().size(); i++) {
-    for (size_t j = 0; j < GetInput()[i].size(); j++) {
-      if (GetInput()[i][j] > max_val) {
-        max_val = GetInput()[i][j];
-      }
+  for (const auto &row : GetInput()) {  // Исправлено: range-based for для внешнего цикла
+    for (int val : row) {
+      max_val = std::max(val, max_val);  // Исправлено: std::max вместо ручной проверки
     }
   }
 

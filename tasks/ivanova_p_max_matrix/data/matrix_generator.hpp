@@ -1,14 +1,14 @@
 #pragma once
 
 #include <algorithm>
+#include <iostream>  // Добавлено для std::cout
 #include <limits>
 #include <random>
 #include <vector>
 
 #include "ivanova_p_max_matrix/common/include/common.hpp"
 
-namespace ivanova_p_max_matrix {
-namespace data {
+namespace ivanova_p_max_matrix::data {  // Объединенные namespace
 
 class MatrixGenerator {
  public:
@@ -69,9 +69,7 @@ class MatrixGenerator {
     bool found_max = false;
     for (const auto &row : matrix) {
       for (int val : row) {
-        if (val > actual_max) {
-          actual_max = val;
-        }
+        actual_max = std::max(val, actual_max);  // Исправлено: std::max вместо >
         if (val == max_val) {
           found_max = true;
         }
@@ -80,9 +78,10 @@ class MatrixGenerator {
 
     if (actual_max != max_val || !found_max) {
       std::cout << "ERROR in generator: Expected max " << max_val << " but got " << actual_max
-                << ", found_max = " << found_max << std::endl;
+                << ", found_max = " << found_max << '\n';  // Исправлено: '\n' вместо std::endl
     } else {
-      std::cout << "Generator: Successfully created matrix with max = " << actual_max << std::endl;
+      std::cout << "Generator: Successfully created matrix with max = " << actual_max
+                << '\n';  // Исправлено: '\n' вместо std::endl
     }
 
     return matrix;
@@ -117,7 +116,7 @@ class MatrixGenerator {
     }
 
     // Для наших сгенерированных матриц максимум = большее из измерений
-    return std::max(matrix.size(), matrix[0].size());
+    return static_cast<int>(std::max(matrix.size(), matrix[0].size()));  // Исправлено: явное приведение типа
   }
 
   static int GetExpectedMaxForNegative([[maybe_unused]] const InType &matrix) {
@@ -125,5 +124,4 @@ class MatrixGenerator {
   }
 };
 
-}  // namespace data
-}  // namespace ivanova_p_max_matrix
+}  // namespace ivanova_p_max_matrix::data

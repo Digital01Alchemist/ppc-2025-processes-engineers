@@ -29,14 +29,10 @@ bool IvanovaPMaxMatrixMPI::ValidationImpl() {
     return false;  // Пустая матрица невалидна
   }
 
-  size_t cols = GetInput()[0].size();
-  for (const auto &row : GetInput()) {  // range-based for
-    if (row.empty() || row.size() != cols) {
-      return false;
-    }
-  }
-
-  return true;
+  const size_t cols = GetInput()[0].size();
+  // Используем std::all_of для проверки всех строк
+  return std::all_of(GetInput().begin(), GetInput().end(),
+                     [cols](const std::vector<int> &row) { return !row.empty() && row.size() == cols; });
 }
 
 bool IvanovaPMaxMatrixMPI::PreProcessingImpl() {

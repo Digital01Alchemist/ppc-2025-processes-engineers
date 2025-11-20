@@ -1,6 +1,7 @@
 #include "ivanova_p_max_matrix/seq/include/ops_seq.hpp"
 
-#include <algorithm>
+#include <algorithm>  // для std::max
+#include <cstddef>    // для size_t
 #include <limits>
 #include <vector>
 

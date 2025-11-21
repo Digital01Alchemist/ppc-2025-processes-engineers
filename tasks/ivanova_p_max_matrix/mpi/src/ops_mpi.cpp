@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <limits>
+#include <tuple>  // Добавлено для std::tuple
 #include <vector>
 
 #include "ivanova_p_max_matrix/common/include/common.hpp"

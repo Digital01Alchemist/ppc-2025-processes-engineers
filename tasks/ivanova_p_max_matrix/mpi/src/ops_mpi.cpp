@@ -49,7 +49,8 @@ bool IvanovaPMaxMatrixMPI::RunImpl() {
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
-  int rows = 0, cols = 0;
+  int rows = 0;
+  int cols = 0;
 
   if (world_rank == 0) {
     rows = static_cast<int>(input.size());
@@ -79,9 +80,9 @@ bool IvanovaPMaxMatrixMPI::RunImpl() {
   std::vector<int> sendcounts(world_size);
   std::vector<int> displs(world_size);
 
-  for (int r = 0; r < world_size; ++r) {
-    sendcounts[r] = rows_per_rank[r] * cols;
-    displs[r] = (r == 0 ? 0 : displs[r - 1] + sendcounts[r - 1]);
+  for (int rank = 0; rank < world_size; ++rank) {
+    sendcounts[rank] = rows_per_rank[rank] * cols;
+    displs[rank] = (rank == 0 ? 0 : displs[rank - 1] + sendcounts[rank - 1]);
   }
 
   // -------------------------------------------

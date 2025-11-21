@@ -27,15 +27,9 @@ bool IvanovaPMaxMatrixSEQ::ValidationImpl() {
     return false;
   }
 
-  // Проверяем все строки
-  size_t cols = GetInput()[0].size();
-  for (const auto &row : GetInput()) {  //    *** ТУТ ПОМЕНЯЛА ИЗ-ЗА TIDY ***
-    if (row.size() != cols) {
-      return false;
-    }
-  }
-
-  return true;
+  const size_t cols = GetInput()[0].size();
+  return std::all_of(GetInput().begin(), GetInput().end(),
+                     [cols](const std::vector<int> &row) { return row.size() == cols; });
 }
 
 bool IvanovaPMaxMatrixSEQ::PreProcessingImpl() {

@@ -24,7 +24,7 @@ class IvanovaPMaxMatrixFuncTests : public ppc::util::BaseRunFuncTests<InType, Ou
   }
 
  protected:
-  IvanovaPMaxMatrixFuncTests() : matrix_size_(0), expected_max_(0) {}
+  IvanovaPMaxMatrixFuncTests() = default;
 
   void SetUp() override {
     TestType params = std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
@@ -64,9 +64,9 @@ class IvanovaPMaxMatrixFuncTests : public ppc::util::BaseRunFuncTests<InType, Ou
 
  private:
   InType test_matrix_;
-  int matrix_size_;
+  int matrix_size_ = 0;
   std::string matrix_type_;
-  int expected_max_;
+  int expected_max_ = 0;
 };
 
 namespace {

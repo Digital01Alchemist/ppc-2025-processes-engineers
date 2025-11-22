@@ -75,14 +75,18 @@ class MatrixGenerator {
         }
       }
     }
+    /*
+        if (actual_max != max_val || !found_max) {
+          std::cout << "ERROR in generator: Expected max " << max_val << " but got " << actual_max
+                    << ", found_max = " << found_max << '\n';  // Исправлено: '\n' вместо std::endl
+        } else {
+          std::cout << "Generator: Successfully created matrix with max = " << actual_max
+                    << '\n';  // Исправлено: '\n' вместо std::endl
+        }
+    */
 
-    if (actual_max != max_val || !found_max) {
-      std::cout << "ERROR in generator: Expected max " << max_val << " but got " << actual_max
-                << ", found_max = " << found_max << '\n';  // Исправлено: '\n' вместо std::endl
-    } else {
-      std::cout << "Generator: Successfully created matrix with max = " << actual_max
-                << '\n';  // Исправлено: '\n' вместо std::endl
-    }
+    std::cout << "Generator: Successfully created matrix with max = " << actual_max
+              << '\n';  // Исправлено: '\n' вместо std::endl
 
     return matrix;
   }

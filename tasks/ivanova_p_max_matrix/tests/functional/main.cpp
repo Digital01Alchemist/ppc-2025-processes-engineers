@@ -116,6 +116,7 @@ class IvanovaPMaxMatrixSpecialTests : public ::testing::Test {
   }
 };
 
+// Существующие тесты
 TEST_F(IvanovaPMaxMatrixSpecialTests, EmptyMatrix) {
   TestEmptyMatrix();
 }

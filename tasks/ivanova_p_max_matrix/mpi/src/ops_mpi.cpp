@@ -87,7 +87,7 @@ int FindLocalMax(const std::vector<int> &vec) {
   if (vec.empty()) {
     return std::numeric_limits<int>::min();
   }
-  return *std::max_element(vec.begin(), vec.end());
+  return *std::ranges::max_element(vec);
 }
 
 }  // namespace
@@ -104,7 +104,8 @@ bool IvanovaPMaxMatrixMPI::RunImpl() {
   // ---------------------------
   // 1) Root сообщает размеры
   // ---------------------------
-  int rows = 0, cols = 0;
+  int rows = 0;
+  int cols = 0;
   if (rank == 0) {
     rows = static_cast<int>(GetInput().size());
     cols = rows > 0 ? static_cast<int>(GetInput()[0].size()) : 0;
@@ -131,13 +132,13 @@ bool IvanovaPMaxMatrixMPI::RunImpl() {
   std::vector<int> sendcounts(size);
   std::vector<int> displs(size);
 
-  for (int r = 0; r < size; r++) {
-    sendcounts[r] = base + (r < rem ? 1 : 0);
+  for (int rank_idx = 0; rank_idx < size; rank_idx++) {
+    sendcounts[rank_idx] = base + (rank_idx < rem ? 1 : 0);
   }
 
   displs[0] = 0;
-  for (int r = 1; r < size; r++) {
-    displs[r] = displs[r - 1] + sendcounts[r - 1];
+  for (int rank_idx = 1; rank_idx < size; rank_idx++) {
+    displs[rank_idx] = displs[rank_idx - 1] + sendcounts[rank_idx - 1];
   }
 
   // ---------------------------

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <algorithm>
-#include <iostream>  // Добавлено для std::cout
 #include <limits>
 #include <random>
 #include <vector>

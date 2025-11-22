@@ -64,30 +64,6 @@ class MatrixGenerator {
     int max_j = pos_dist(gen);
     matrix[max_i][max_j] = max_val;
 
-    // ВЕРИФИКАЦИЯ: проверяем что максимум действительно установлен
-    int actual_max = std::numeric_limits<int>::min();
-    bool found_max = false;
-    for (const auto &row : matrix) {
-      for (int val : row) {
-        actual_max = std::max(val, actual_max);  // Исправлено: std::max вместо >
-        if (val == max_val) {
-          found_max = true;
-        }
-      }
-    }
-    /*
-        if (actual_max != max_val || !found_max) {
-          std::cout << "ERROR in generator: Expected max " << max_val << " but got " << actual_max
-                    << ", found_max = " << found_max << '\n';  // Исправлено: '\n' вместо std::endl
-        } else {
-          std::cout << "Generator: Successfully created matrix with max = " << actual_max
-                    << '\n';  // Исправлено: '\n' вместо std::endl
-        }
-    */
-
-    std::cout << "Generator: Successfully created matrix with max = " << actual_max
-              << '\n';  // Исправлено: '\n' вместо std::endl
-
     return matrix;
   }
 

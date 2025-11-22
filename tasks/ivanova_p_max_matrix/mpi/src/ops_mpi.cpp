@@ -114,11 +114,6 @@ bool IvanovaPMaxMatrixMPI::RunImpl() {
   MPI_Bcast(&rows, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&cols, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-  if (rows == 0 || cols == 0) {
-    GetOutput() = std::numeric_limits<int>::min();
-    return true;
-  }
-
   const int total = rows * cols;
 
   // ---------------------------

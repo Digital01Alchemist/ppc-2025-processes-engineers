@@ -7,7 +7,6 @@
 #include <limits>    // для std::numeric_limits
 #include <string>
 #include <tuple>
-#include <vector>
 
 #include "ivanova_p_max_matrix/common/include/common.hpp"
 #include "ivanova_p_max_matrix/data/matrix_generator.hpp"

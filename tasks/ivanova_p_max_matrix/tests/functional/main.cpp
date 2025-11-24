@@ -7,6 +7,7 @@
 #include <limits>    // для std::numeric_limits
 #include <string>
 #include <tuple>
+#include <vector>
 
 #include "ivanova_p_max_matrix/common/include/common.hpp"
 #include "ivanova_p_max_matrix/data/matrix_generator.hpp"
@@ -114,6 +115,89 @@ class IvanovaPMaxMatrixSpecialTests : public ::testing::Test {
     EXPECT_TRUE(task.PostProcessing());
     EXPECT_EQ(task.GetOutput(), 3);
   }
+
+  // Новые тесты для покрытия конкретных непокрытых строк
+
+  // Покрытие для seq строки 17: if (!in.empty())
+  static void TestSeqNonEmptyConstructor() {
+    InType non_empty_matrix = {{1, 2}, {3, 4}};
+    IvanovaPMaxMatrixSEQ task(non_empty_matrix);
+    EXPECT_TRUE(task.Validation());
+    EXPECT_TRUE(task.PreProcessing());
+    EXPECT_TRUE(task.Run());
+    EXPECT_TRUE(task.PostProcessing());
+    EXPECT_EQ(task.GetOutput(), 4);
+  }
+
+  // Покрытие для seq строки 26: if (GetInput().empty())
+  static void TestSeqEmptyInputValidation() {
+    InType empty_matrix;
+    IvanovaPMaxMatrixSEQ task(empty_matrix);
+    // Эта строка уже покрыта в TestEmptyMatrix, но добавим явно
+    EXPECT_FALSE(task.Validation());
+
+    EXPECT_TRUE(task.PreProcessing());
+    EXPECT_TRUE(task.Run());
+    EXPECT_TRUE(task.PostProcessing());
+  }
+
+  // Покрытие для mpi строки 46: if (GetInput().empty())
+  static void TestMPIEmptyInputValidation() {
+    InType empty_matrix;
+    IvanovaPMaxMatrixMPI task(empty_matrix);
+    EXPECT_FALSE(task.Validation());
+    // Для MPI всегда вызываем полный цикл
+    EXPECT_TRUE(task.PreProcessing());
+    EXPECT_TRUE(task.Run());
+    EXPECT_TRUE(task.PostProcessing());
+  }
+
+  // Покрытие для mpi строки 51: if (row.size() != cols)
+  static void TestMPIDifferentRowSizes() {
+    InType different_sizes_matrix = {{1, 2, 3},
+                                     {4, 5},  // Разный размер - должно провалить валидацию
+                                     {6, 7, 8}};
+    IvanovaPMaxMatrixMPI task(different_sizes_matrix);
+    EXPECT_FALSE(task.Validation());
+    EXPECT_TRUE(task.PreProcessing());
+    EXPECT_TRUE(task.Run());
+    EXPECT_TRUE(task.PostProcessing());
+  }
+
+  // Покрытие для mpi строки 87: if (vec.empty())
+  // Эта строка находится во вспомогательной функции CalculateDistribution
+  // Покрываем через создание матрицы с разными размерами
+  static void TestMPISingleRowMatrix() {
+    InType single_row_matrix = {{1, 2, 3, 4, 5}};
+    IvanovaPMaxMatrixMPI task(single_row_matrix);
+    EXPECT_TRUE(task.Validation());
+    EXPECT_TRUE(task.PreProcessing());
+    EXPECT_TRUE(task.Run());
+    EXPECT_TRUE(task.PostProcessing());
+    EXPECT_EQ(task.GetOutput(), 5);
+  }
+
+  // Дополнительный тест для покрытия случая с одной колонкой
+  static void TestMPISingleColumnMatrix() {
+    InType single_column_matrix = {{1}, {2}, {3}, {4}, {5}};
+    IvanovaPMaxMatrixMPI task(single_column_matrix);
+    EXPECT_TRUE(task.Validation());
+    EXPECT_TRUE(task.PreProcessing());
+    EXPECT_TRUE(task.Run());
+    EXPECT_TRUE(task.PostProcessing());
+    EXPECT_EQ(task.GetOutput(), 5);
+  }
+
+  // Тест для очень маленькой матрицы (1x1)
+  static void TestMPISingleElementMatrix() {
+    InType single_element = {{42}};
+    IvanovaPMaxMatrixMPI task(single_element);
+    EXPECT_TRUE(task.Validation());
+    EXPECT_TRUE(task.PreProcessing());
+    EXPECT_TRUE(task.Run());
+    EXPECT_TRUE(task.PostProcessing());
+    EXPECT_EQ(task.GetOutput(), 42);
+  }
 };
 
 // Существующие тесты
@@ -131,6 +215,35 @@ TEST_F(IvanovaPMaxMatrixSpecialTests, SingleElement) {
 
 TEST_F(IvanovaPMaxMatrixSpecialTests, KnownMaxMatrix) {
   TestKnownMaxMatrix();
+}
+
+// Новые тесты для покрытия конкретных строк
+TEST_F(IvanovaPMaxMatrixSpecialTests, SeqNonEmptyConstructor) {
+  TestSeqNonEmptyConstructor();
+}
+
+TEST_F(IvanovaPMaxMatrixSpecialTests, SeqEmptyInputValidation) {
+  TestSeqEmptyInputValidation();
+}
+
+TEST_F(IvanovaPMaxMatrixSpecialTests, MPIEmptyInputValidation) {
+  TestMPIEmptyInputValidation();
+}
+
+TEST_F(IvanovaPMaxMatrixSpecialTests, MPIDifferentRowSizes) {
+  TestMPIDifferentRowSizes();
+}
+
+TEST_F(IvanovaPMaxMatrixSpecialTests, MPISingleRowMatrix) {
+  TestMPISingleRowMatrix();
+}
+
+TEST_F(IvanovaPMaxMatrixSpecialTests, MPISingleColumnMatrix) {
+  TestMPISingleColumnMatrix();
+}
+
+TEST_F(IvanovaPMaxMatrixSpecialTests, MPISingleElementMatrix) {
+  TestMPISingleElementMatrix();
 }
 
 const std::array<TestType, 6> kTestMatrices = {std::make_tuple(10, "small"),    std::make_tuple(100, "medium"),

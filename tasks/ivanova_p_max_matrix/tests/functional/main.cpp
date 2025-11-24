@@ -197,6 +197,32 @@ class IvanovaPMaxMatrixSpecialTests : public ::testing::Test {
     EXPECT_TRUE(task.PostProcessing());
     EXPECT_EQ(task.GetOutput(), 42);
   }
+
+  // ДОБАВЬТЕ ЭТИ ДВА ПРОСТЫХ ТЕСТА ДЛЯ ПОКРЫТИЯ ОБЪЯВЛЕНИЙ КЛАССОВ:
+
+  static void TestMPIClassDirectCreation() {
+    InType simple_matrix = {{1, 2}, {3, 4}};
+    // Прямое создание объекта MPI класса
+    IvanovaPMaxMatrixMPI mpi_task(simple_matrix);
+    // Просто проверяем, что объект создался
+    EXPECT_TRUE(mpi_task.Validation());
+    EXPECT_TRUE(mpi_task.PreProcessing());
+    EXPECT_TRUE(mpi_task.Run());
+    EXPECT_TRUE(mpi_task.PostProcessing());
+    EXPECT_EQ(mpi_task.GetStaticTypeOfTask(), ppc::task::TypeOfTask::kMPI);
+  }
+
+  static void TestSEQClassDirectCreation() {
+    InType simple_matrix = {{1, 2}, {3, 4}};
+    // Прямое создание объекта SEQ класса
+    IvanovaPMaxMatrixSEQ seq_task(simple_matrix);
+    // Просто проверяем, что объект создался
+    EXPECT_TRUE(seq_task.Validation());
+    EXPECT_TRUE(seq_task.PreProcessing());
+    EXPECT_TRUE(seq_task.Run());
+    EXPECT_TRUE(seq_task.PostProcessing());
+    EXPECT_EQ(seq_task.GetStaticTypeOfTask(), ppc::task::TypeOfTask::kSEQ);
+  }
 };
 
 // Существующие тесты
@@ -243,6 +269,15 @@ TEST_F(IvanovaPMaxMatrixSpecialTests, MPISingleColumnMatrix) {
 
 TEST_F(IvanovaPMaxMatrixSpecialTests, MPISingleElementMatrix) {
   TestMPISingleElementMatrix();
+}
+
+// ДОБАВЬТЕ ЭТИ ДВА НОВЫХ ТЕСТА:
+TEST_F(IvanovaPMaxMatrixSpecialTests, MPIClassDirectCreation) {
+  TestMPIClassDirectCreation();
+}
+
+TEST_F(IvanovaPMaxMatrixSpecialTests, SEQClassDirectCreation) {
+  TestSEQClassDirectCreation();
 }
 
 const std::array<TestType, 6> kTestMatrices = {std::make_tuple(10, "small"),    std::make_tuple(100, "medium"),

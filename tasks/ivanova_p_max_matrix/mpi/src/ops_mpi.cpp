@@ -11,12 +11,6 @@
 
 namespace ivanova_p_max_matrix {
 
-// ---------------------------------------------------------------------------
-// Конструктор
-// ---------------------------------------------------------------------------
-// ИЗМЕНЕНО: теперь вход присваивается ТОЛЬКО ранку 0
-//           остальные процессы получают пустой GetInput()
-
 IvanovaPMaxMatrixMPI::IvanovaPMaxMatrixMPI(const InType &in) {
   SetTypeOfTask(GetStaticTypeOfTask());
   GetOutput() = std::numeric_limits<int>::min();
@@ -31,11 +25,6 @@ IvanovaPMaxMatrixMPI::IvanovaPMaxMatrixMPI(const InType &in) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Валидация
-// ---------------------------------------------------------------------------
-// ИЗМЕНЕНО: валидация выполняется только на root.
-//           Потом результат распространяется через MPI_Bcast.
 bool IvanovaPMaxMatrixMPI::ValidationImpl() {
   int rank = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -66,9 +55,6 @@ bool IvanovaPMaxMatrixMPI::PreProcessingImpl() {
   return true;
 }
 
-// ---------------------------------------------------------------------------
-// Вспомогательные функции (как были, но оптимизированы)
-// ---------------------------------------------------------------------------
 namespace {
 
 std::vector<int> PackMatrix(const InType &input, int rows, int cols) {
@@ -92,18 +78,12 @@ int FindLocalMax(const std::vector<int> &vec) {
 
 }  // namespace
 
-// ---------------------------------------------------------------------------
-// Основной MPI алгоритм
-// ---------------------------------------------------------------------------
 bool IvanovaPMaxMatrixMPI::RunImpl() {
   int rank = 0;
   int size = 1;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  // ---------------------------
-  // 1) Root сообщает размеры
-  // ---------------------------
   int rows = 0;
   int cols = 0;
   if (rank == 0) {
@@ -116,9 +96,6 @@ bool IvanovaPMaxMatrixMPI::RunImpl() {
 
   const int total = rows * cols;
 
-  // ---------------------------
-  // 2) Распределяем число элементов на ранки
-  // ---------------------------
   int base = total / size;
   int rem = total % size;
 
@@ -136,30 +113,18 @@ bool IvanovaPMaxMatrixMPI::RunImpl() {
     displs[rank_idx] = displs[rank_idx - 1] + sendcounts[rank_idx - 1];
   }
 
-  // ---------------------------
-  // 3) Root упаковывает матрицу в массив
-  // ---------------------------
   std::vector<int> flat;
   if (rank == 0) {
     flat = PackMatrix(GetInput(), rows, cols);
   }
 
-  // ---------------------------
-  // 4) Scatterv — каждый получает свой кусок
-  // ---------------------------
   std::vector<int> local(my_count);
 
   MPI_Scatterv(rank == 0 ? flat.data() : nullptr, sendcounts.data(), displs.data(), MPI_INT, local.data(), my_count,
                MPI_INT, 0, MPI_COMM_WORLD);
 
-  // ---------------------------
-  // 5) Локальный максимум
-  // ---------------------------
   int local_max = FindLocalMax(local);
 
-  // ---------------------------
-  // 6) Глобальный максимум
-  // ---------------------------
   int global_max = 0;
   MPI_Allreduce(&local_max, &global_max, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 

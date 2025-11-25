@@ -199,8 +199,6 @@ class IvanovaPMaxMatrixSpecialTests : public ::testing::Test {
     EXPECT_EQ(task.GetOutput(), 42);
   }
 
-  // ДОБАВЬТЕ ЭТИ ДВА ПРОСТЫХ ТЕСТА ДЛЯ ПОКРЫТИЯ ОБЪЯВЛЕНИЙ КЛАССОВ:
-
   static void TestMPIClassDirectCreation() {
     InType simple_matrix = {{1, 2}, {3, 4}};
     // Прямое создание объекта MPI класса
@@ -272,7 +270,6 @@ TEST_F(IvanovaPMaxMatrixSpecialTests, MPISingleElementMatrix) {
   TestMPISingleElementMatrix();
 }
 
-// ДОБАВЬТЕ ЭТИ ДВА НОВЫХ ТЕСТА:
 TEST_F(IvanovaPMaxMatrixSpecialTests, MPIClassDirectCreation) {
   TestMPIClassDirectCreation();
 }

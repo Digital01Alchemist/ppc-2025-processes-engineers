@@ -52,7 +52,6 @@ bool IvanovaPMaxMatrixSEQ::RunImpl() {
 }
 
 bool IvanovaPMaxMatrixSEQ::PostProcessingImpl() {
-  // Дополнительная обработка не требуется
   return true;
 }
 

@@ -54,26 +54,37 @@ bool IvanovaPMaxMatrixMPI::PreProcessingImpl() {
   GetOutput() = std::numeric_limits<int>::min();
   return true;
 }
-
 namespace {
 
-std::vector<int> PackMatrix(const InType &input, int rows, int cols) {
-  std::vector<int> flat(static_cast<size_t>(rows) * cols);
+// Универсальная функция поиска максимума по указателю и размеру
+// (позволяет не создавать лишние вектора)
+int FindMaxInPointer(const int *data, size_t size) {
+  if (size == 0) {
+    return std::numeric_limits<int>::min();
+  }
+  // Используем стандартный алгоритм для raw-памяти
+  // Можно использовать std::max_element
+  int max_val = data[0];
+  for (size_t i = 1; i < size; ++i) {
+    if (data[i] > max_val) {
+      max_val = data[i];
+    }
+  }
+  return max_val;
+}
 
+// Твоя функция PackMatrix осталась без изменений, она хорошая
+std::vector<int> PackMatrix(const std::vector<std::vector<int>> &input, int rows, int cols) {
+  if (rows == 0 || cols == 0) {
+    return {};
+  }
+  std::vector<int> flat(static_cast<size_t>(rows) * cols);
   size_t pos = 0;
   for (int i = 0; i < rows; ++i) {
-    // быстрее, чем двойной for: memcpy целой строки
     std::memcpy(&flat[pos], input[i].data(), sizeof(int) * cols);
     pos += cols;
   }
   return flat;
-}
-
-int FindLocalMax(const std::vector<int> &vec) {
-  if (vec.empty()) {
-    return std::numeric_limits<int>::min();
-  }
-  return *std::ranges::max_element(vec);
 }
 
 }  // namespace
@@ -83,6 +94,30 @@ bool IvanovaPMaxMatrixMPI::RunImpl() {
   int size = 1;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  // --- ОПТИМИЗАЦИЯ 1: Если процесс один, не тратим время на MPI и копирование ---
+  if (size == 1) {
+    if (GetInput().empty()) {
+      GetOutput() = std::numeric_limits<int>::min();
+      return true;
+    }
+    // Честный последовательный поиск без аллокаций плоского массива
+    int global_max = std::numeric_limits<int>::min();
+    bool first = true;
+    for (const auto &row : GetInput()) {
+      if (row.empty()) {
+        continue;
+      }
+      int row_max = FindMaxInPointer(row.data(), row.size());
+      if (first || row_max > global_max) {
+        global_max = row_max;
+        first = false;
+      }
+    }
+    GetOutput() = global_max;
+    return true;
+  }
+  // -----------------------------------------------------------------------------
 
   int rows = 0;
   int cols = 0;
@@ -94,36 +129,62 @@ bool IvanovaPMaxMatrixMPI::RunImpl() {
   MPI_Bcast(&rows, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&cols, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-  const int total = rows * cols;
+  // Если матрица пустая, ранний выход
+  if (rows == 0 || cols == 0) {
+    GetOutput() = std::numeric_limits<int>::min();
+    return true;
+  }
 
+  const int total = rows * cols;
   int base = total / size;
   int rem = total % size;
 
+  // Рассчитываем, сколько элементов обрабатывает текущий процесс
   int my_count = base + (rank < rem ? 1 : 0);
 
+  // Подготовка данных для scatter (нужна всем для displs/counts,
+  // хотя worker-ам нужны только counts для Scatterv, но для логики оставим)
   std::vector<int> sendcounts(size);
   std::vector<int> displs(size);
 
-  for (int rank_idx = 0; rank_idx < size; rank_idx++) {
-    sendcounts[rank_idx] = base + (rank_idx < rem ? 1 : 0);
-  }
-
-  displs[0] = 0;
-  for (int rank_idx = 1; rank_idx < size; rank_idx++) {
-    displs[rank_idx] = displs[rank_idx - 1] + sendcounts[rank_idx - 1];
+  if (rank == 0) {
+    displs[0] = 0;
+    for (int i = 0; i < size; i++) {
+      sendcounts[i] = base + (i < rem ? 1 : 0);
+      if (i > 0) {
+        displs[i] = displs[i - 1] + sendcounts[i - 1];
+      }
+    }
   }
 
   std::vector<int> flat;
+  std::vector<int> local;  // Вектор для worker-ов
+  int local_max = std::numeric_limits<int>::min();
+
   if (rank == 0) {
     flat = PackMatrix(GetInput(), rows, cols);
+
+    // --- ОПТИМИЗАЦИЯ 2: MPI_IN_PLACE на Root ---
+    // Root не выделяет память под local и не копирует в него данные.
+    // Он использует MPI_IN_PLACE, чтобы сказать Scatterv: "Мои данные уже у меня".
+    MPI_Scatterv(flat.data(), sendcounts.data(), displs.data(), MPI_INT, MPI_IN_PLACE, my_count, MPI_INT, 0,
+                 MPI_COMM_WORLD);
+
+    // Root считает максимум прямо внутри flat массива
+    // Его данные лежат с displs[0] (это 0) и имеют длину sendcounts[0] (это my_count)
+    local_max = FindMaxInPointer(flat.data(), my_count);
+
+  } else {
+    // Worker-ы выделяют память
+    local.resize(my_count);
+
+    // Worker-ы получают данные как обычно
+    MPI_Scatterv(nullptr, nullptr, nullptr, MPI_INT,  // send-аргументы игнорируются на worker
+                 local.data(), my_count, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Worker считает по своему локальному вектору
+    local_max = FindMaxInPointer(local.data(), my_count);
   }
-
-  std::vector<int> local(my_count);
-
-  MPI_Scatterv(rank == 0 ? flat.data() : nullptr, sendcounts.data(), displs.data(), MPI_INT, local.data(), my_count,
-               MPI_INT, 0, MPI_COMM_WORLD);
-
-  int local_max = FindLocalMax(local);
 
   int global_max = 0;
   MPI_Allreduce(&local_max, &global_max, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);

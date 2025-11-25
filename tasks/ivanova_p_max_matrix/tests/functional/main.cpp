@@ -12,7 +12,6 @@
 #include "ivanova_p_max_matrix/data/matrix_generator.hpp"
 #include "ivanova_p_max_matrix/mpi/include/ops_mpi.hpp"
 #include "ivanova_p_max_matrix/seq/include/ops_seq.hpp"
-#include "task/include/task.hpp"
 #include "util/include/func_test_util.hpp"
 #include "util/include/util.hpp"
 

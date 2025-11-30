@@ -45,9 +45,6 @@ class IvanovaPMaxMatrixFuncTests : public ppc::util::BaseRunFuncTests<InType, Ou
         actual_max = std::max(val, actual_max);
       }
     }
-
-    std::cout << "Test Setup: Matrix " << matrix_size_ << "x" << matrix_size_ << " - Expected max: " << expected_max_
-              << ", Actual max: " << actual_max << '\n';
   }
 
   bool CheckTestOutputData(OutType &output_data) final {

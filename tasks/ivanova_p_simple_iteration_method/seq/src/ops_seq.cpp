@@ -5,20 +5,7 @@
 
 namespace ivanova_p_simple_iteration_method {
 
-IvanovaPSimpleIterationMethodSEQ::IvanovaPSimpleIterationMethodSEQ(const InType &in) {
-  SetTypeOfTask(GetStaticTypeOfTask());
-  GetInput() = in;
-  GetOutput() = 0;
-}
-
-bool IvanovaPSimpleIterationMethodSEQ::ValidationImpl() {
-  return (GetInput() > 0) && (GetOutput() == 0);
-}
-
-bool IvanovaPSimpleIterationMethodSEQ::PreProcessingImpl() {
-  GetOutput() = 0;
-  return true;
-}
+namespace {
 
 // Новая функция: один шаг метода простой итерации
 void SimpleIterationStep(const std::vector<double> &A, const std::vector<double> &x, const std::vector<double> &b,
@@ -40,6 +27,23 @@ double ComputeDiffNorm(const std::vector<double> &x, const std::vector<double> &
     diff += d * d;
   }
   return std::sqrt(diff);
+}
+
+}  // namespace
+
+IvanovaPSimpleIterationMethodSEQ::IvanovaPSimpleIterationMethodSEQ(const InType &in) {
+  SetTypeOfTask(GetStaticTypeOfTask());
+  GetInput() = in;
+  GetOutput() = 0;
+}
+
+bool IvanovaPSimpleIterationMethodSEQ::ValidationImpl() {
+  return (GetInput() > 0) && (GetOutput() == 0);
+}
+
+bool IvanovaPSimpleIterationMethodSEQ::PreProcessingImpl() {
+  GetOutput() = 0;
+  return true;
 }
 
 bool IvanovaPSimpleIterationMethodSEQ::RunImpl() {

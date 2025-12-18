@@ -53,24 +53,16 @@ bool IvanovaPSimpleIterationMethodSEQ::RunImpl() {
   }
 
   // Создаем тестовую систему: A = I (единичная матрица), b = (1, 1, ..., 1)
-  // Используем vector<vector<double>> для матрицы - это медленнее
 
   // Новая версия A
   std::vector<double> A(n * n, 0.0);
   for (int i = 0; i < n; ++i) {
     A[i * n + i] = 1.0;
   }
-  // std::vector<std::vector<double>> A(n, std::vector<double>(n, 0.0));
+
   std::vector<double> b(n, 1.0);
   std::vector<double> x(n, 0.0);
   std::vector<double> x_new(n, 0.0);
-
-  // Старая инициализация A
-  /*
-  // Инициализация единичной матрицы
-  for (int i = 0; i < n; ++i) {
-    A[i][i] = 1.0;
-  }*/
 
   // Параметры метода
   const double tau = 0.5;
@@ -88,32 +80,6 @@ bool IvanovaPSimpleIterationMethodSEQ::RunImpl() {
 
     x.swap(x_new);
   }
-
-  // Метод простой итерации (старый)
-  /* for (int iteration = 0; iteration < max_iterations; ++iteration) {
-      for (int i = 0; i < n; ++i) {
-        double ax_i = 0.0;
-        for (int j = 0; j < n; ++j) {
-          ax_i += A[i][j] * x[j];
-        }
-        x_new[i] = x[i] - tau * (ax_i - b[i]);
-      }
-
-      // Проверка сходимости
-      double diff = 0.0;
-      for (int i = 0; i < n; ++i) {
-        double d = x_new[i] - x[i];
-        diff += d * d;
-      }
-      diff = std::sqrt(diff);
-
-      // Обновление решения
-      x = x_new;
-
-      if (diff < epsilon) {
-        break;
-      }
-    }*/
 
   // Вычисление суммы компонент
   double sum = 0.0;

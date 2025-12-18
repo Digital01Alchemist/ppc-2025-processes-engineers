@@ -66,32 +66,6 @@ bool CheckConvergenceAll(double local_diff, double epsilon) {
   return std::sqrt(global_diff) < epsilon;
 }
 
-/*
-// Сбор результатов на мастер-процессе
-void GatherResults(const std::vector<double>& local_x_new,
-                  std::vector<double>& x_new,
-                  const std::vector<int>& row_counts,
-                  const std::vector<int>& row_displs,
-                  int rank, int size, int local_rows, int start_row) {
-  if (rank == 0) {
-    // Копируем локальную часть мастер-процесса
-    for (int i = 0; i < local_rows; ++i) {
-      x_new[start_row + i] = local_x_new[i];
-    }
-
-    // Принимаем части от других процессов
-    for (int proc = 1; proc < size; ++proc) {
-      MPI_Recv(x_new.data() + row_displs[proc], row_counts[proc],
-               MPI_DOUBLE, proc, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    }
-  } else {
-    // Отправляем локальную часть на мастер-процесс
-    MPI_Send(local_x_new.data(), local_rows, MPI_DOUBLE,
-             0, 0, MPI_COMM_WORLD);
-  }
-}
-*/
-
 // Вычисление локальной нормы разности
 double ComputeLocalDiff(const std::vector<double> &x_new, const std::vector<double> &x, int local_rows, int start_row) {
   double local_diff = 0.0;
@@ -101,23 +75,6 @@ double ComputeLocalDiff(const std::vector<double> &x_new, const std::vector<doub
   }
   return local_diff;
 }
-
-/*
-// Проверка сходимости
-int CheckConvergence(double local_diff, double epsilon, int rank) {
-  double global_diff = 0.0;
-  MPI_Reduce(&local_diff, &global_diff, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-
-  int converged = 0;
-  if (rank == 0) {
-    global_diff = std::sqrt(global_diff);
-    converged = (global_diff < epsilon) ? 1 : 0;
-  }
-
-  MPI_Bcast(&converged, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  return converged;
-}
-*/
 
 }  // namespace
 
@@ -215,32 +172,6 @@ bool IvanovaPSimpleIterationMethodMPI::RunImpl() {
       break;
     }
   }
-
-  /*
-  // Метод простой итерации
-  for (int iteration = 0; iteration < max_iterations; ++iteration) {
-    // Вычисление локальной части нового приближения
-    ComputeLocalProduct(local_matrix, x, local_b, local_x_new,
-                       local_rows, start_row, n, tau);
-
-    // Сбор результатов на мастер-процессе
-    GatherResults(local_x_new, x_new, row_counts, row_displs,
-                 rank, size, local_rows, start_row);
-
-    // Рассылка нового вектора всем процессам
-    MPI_Bcast(x_new.data(), n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-    // Проверка сходимости
-    double local_diff = ComputeLocalDiff(x_new, x, local_rows, start_row);
-    int converged = CheckConvergence(local_diff, epsilon, rank);
-
-    // Обновление решения
-    x = x_new;
-
-    if (converged != 0) {
-      break;
-    }
-  }*/
 
   // Вычисление суммы компонент вектора решения
   double local_sum = 0.0;

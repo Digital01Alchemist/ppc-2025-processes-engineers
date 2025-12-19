@@ -179,7 +179,7 @@ TEST(IvanovaPSimpleIterationMethodEdgeCases, MinimalSizeMPI) {
 }
 
 // Тесты на согласованность результатов
-TEST(IvanovaPSimpleIterationMethodEdgeCases, ConsistencySEQvsMPI_Small) {
+TEST(IvanovaPSimpleIterationMethodEdgeCases, ConsistencySEQvsMPISmall) {
   IvanovaPSimpleIterationMethodSEQ seq_task(3);
   IvanovaPSimpleIterationMethodMPI mpi_task(3);
 
@@ -197,7 +197,7 @@ TEST(IvanovaPSimpleIterationMethodEdgeCases, ConsistencySEQvsMPI_Small) {
   EXPECT_EQ(seq_task.GetOutput(), 3);
 }
 
-TEST(IvanovaPSimpleIterationMethodEdgeCases, ConsistencySEQvsMPI_Medium) {
+TEST(IvanovaPSimpleIterationMethodEdgeCases, ConsistencySEQvsMPIMedium) {
   IvanovaPSimpleIterationMethodSEQ seq_task(10);
   IvanovaPSimpleIterationMethodMPI mpi_task(10);
 
@@ -215,7 +215,7 @@ TEST(IvanovaPSimpleIterationMethodEdgeCases, ConsistencySEQvsMPI_Medium) {
   EXPECT_EQ(seq_task.GetOutput(), 10);
 }
 
-TEST(IvanovaPSimpleIterationMethodEdgeCases, SingleProcessMPI_EqualsSEQ) {
+TEST(IvanovaPSimpleIterationMethodEdgeCases, SingleProcessMPIEqualsSEQ) {
   // MPI с одним процессом должно работать как SEQ
   IvanovaPSimpleIterationMethodSEQ seq_task(7);
   IvanovaPSimpleIterationMethodMPI mpi_task(7);
@@ -235,7 +235,7 @@ TEST(IvanovaPSimpleIterationMethodEdgeCases, SingleProcessMPI_EqualsSEQ) {
 }
 
 // Тесты на правильность работы метода
-TEST(IvanovaPSimpleIterationMethodEdgeCases, MethodConvergence_SmallSize) {
+TEST(IvanovaPSimpleIterationMethodEdgeCases, MethodConvergenceSmallSize) {
   // Проверяем, что метод сходится для малых размеров
   for (int n : {1, 2, 3, 4, 5}) {
     IvanovaPSimpleIterationMethodSEQ task(n);
@@ -247,7 +247,7 @@ TEST(IvanovaPSimpleIterationMethodEdgeCases, MethodConvergence_SmallSize) {
   }
 }
 
-TEST(IvanovaPSimpleIterationMethodEdgeCases, MethodConvergence_MediumSize) {
+TEST(IvanovaPSimpleIterationMethodEdgeCases, MethodConvergenceMediumSize) {
   // Проверяем, что метод сходится для средних размеров
   for (int n : {10, 20, 30}) {
     IvanovaPSimpleIterationMethodSEQ task(n);
@@ -321,17 +321,6 @@ TEST(IvanovaPSimpleIterationMethodEdgeCases, ModerateSizePerformanceCheck) {
   EXPECT_TRUE(task.PostProcessing());
   EXPECT_EQ(task.GetOutput(), 200);
 }
-
-// Тесты на корректность инициализации
-/*TEST(IvanovaPSimpleIterationMethodEdgeCases, InitialOutputZero) {
-  // Проверяем, что после создания задачи выход равен 0
-  IvanovaPSimpleIterationMethodSEQ seq_task(5);
-  EXPECT_EQ(seq_task.GetOutput(), 0);
-
-  IvanovaPSimpleIterationMethodMPI mpi_task(5);
-  EXPECT_EQ(mpi_task.GetOutput(), 0);
-}
-*/
 
 // Тесты на сохранение состояния
 TEST(IvanovaPSimpleIterationMethodEdgeCases, StatePreservationSEQ) {

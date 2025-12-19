@@ -1,26 +1,27 @@
 #include "ivanova_p_simple_iteration_method/seq/include/ops_seq.hpp"
 
 #include <cmath>
+#include <cstddef>
 #include <vector>
 
 namespace ivanova_p_simple_iteration_method {
 
-namespace {
+namespace {  // Анонимный namespace для вспомогательных функций
 
 // Новая функция: один шаг метода простой итерации
-void SimpleIterationStep(const std::vector<double> &A, const std::vector<double> &x, const std::vector<double> &b,
+void simpleIterationStep(const std::vector<double> &a, const std::vector<double> &x, const std::vector<double> &b,
                          std::vector<double> &x_new, int n, double tau) {
   for (int i = 0; i < n; ++i) {
     double ax = 0.0;
     for (int j = 0; j < n; ++j) {
-      ax += A[i * n + j] * x[j];
+      ax += a[static_cast<size_t>(i) * n + j] * x[j];
     }
-    x_new[i] = x[i] - tau * (ax - b[i]);
+    x_new[i] = x[i] - (tau * (ax - b[i]));
   }
 }
 
 // Новая функция: вычисление нормы разности
-double ComputeDiffNorm(const std::vector<double> &x, const std::vector<double> &x_new) {
+double computeDiffNorm(const std::vector<double> &x, const std::vector<double> &x_new) {
   double diff = 0.0;
   for (size_t i = 0; i < x.size(); ++i) {
     double d = x_new[i] - x[i];
@@ -53,11 +54,10 @@ bool IvanovaPSimpleIterationMethodSEQ::RunImpl() {
   }
 
   // Создаем тестовую систему: A = I (единичная матрица), b = (1, 1, ..., 1)
-
-  // Новая версия A
-  std::vector<double> A(n * n, 0.0);
+  const size_t matrix_size = static_cast<size_t>(n) * n;
+  std::vector<double> a(matrix_size, 0.0);
   for (int i = 0; i < n; ++i) {
-    A[i * n + i] = 1.0;
+    a[static_cast<size_t>(i) * n + i] = 1.0;
   }
 
   std::vector<double> b(n, 1.0);
@@ -69,11 +69,11 @@ bool IvanovaPSimpleIterationMethodSEQ::RunImpl() {
   const double epsilon = 1e-6;
   const int max_iterations = 1000;
 
-  // Новая версия основного цикла
+  // Метод простой итерации
   for (int iter = 0; iter < max_iterations; ++iter) {
-    SimpleIterationStep(A, x, b, x_new, n, tau);
+    simpleIterationStep(a, x, b, x_new, n, tau);
 
-    if (ComputeDiffNorm(x, x_new) < epsilon) {
+    if (computeDiffNorm(x, x_new) < epsilon) {
       x = x_new;
       break;
     }

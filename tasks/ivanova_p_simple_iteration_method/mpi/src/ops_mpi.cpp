@@ -13,7 +13,7 @@ namespace ivanova_p_simple_iteration_method {
 namespace {  // Анонимный namespace для всех вспомогательных функций
 
 // Распределение строк матрицы по процессам
-void computeDistribution(int n, int size, std::vector<int> &row_counts, std::vector<int> &row_displs,
+void ComputeDistribution(int n, int size, std::vector<int> &row_counts, std::vector<int> &row_displs,
                          std::vector<int> &matrix_counts, std::vector<int> &matrix_displs) {
   int row_offset = 0;
   int matrix_offset = 0;
@@ -34,29 +34,29 @@ void computeDistribution(int n, int size, std::vector<int> &row_counts, std::vec
 }
 
 // Инициализация матрицы и вектора (на нулевом процессе)
-void initializeSystem(std::vector<double> &flat_matrix, std::vector<double> &b, int n) {
+void InitializeSystem(std::vector<double> &flat_matrix, std::vector<double> &b, int n) {
   flat_matrix.resize(static_cast<size_t>(n) * n, 0.0);
   for (int i = 0; i < n; ++i) {
-    flat_matrix[static_cast<size_t>(i) * n + i] = 1.0;  // Единичная матрица
+    flat_matrix[(static_cast<size_t>(i) * n) + i] = 1.0;  // Единичная матрица
   }
   b.resize(n, 1.0);  // Вектор из единиц
 }
 
 // Вычисление локального произведения (часть матрично-векторного умножения)
-void computeLocalProduct(const std::vector<double> &local_matrix, const std::vector<double> &x,
+void ComputeLocalProduct(const std::vector<double> &local_matrix, const std::vector<double> &x,
                          const std::vector<double> &local_b, std::vector<double> &local_x_new, int local_rows,
                          int start_row, int n, double tau) {
   for (int i = 0; i < local_rows; ++i) {
     double ax_i = 0.0;
     for (int j = 0; j < n; ++j) {
-      ax_i += local_matrix[static_cast<size_t>(i) * n + j] * x[j];
+      ax_i += local_matrix[(static_cast<size_t>(i) * n) + j] * x[j];
     }
     local_x_new[i] = x[start_row + i] - (tau * (ax_i - local_b[i]));
   }
 }
 
 // Новая функция: сбор нового вектора
-void allGatherVector(const std::vector<double> &local_x, std::vector<double> &x_global,
+void AllGatherVector(const std::vector<double> &local_x, std::vector<double> &x_global,
                      const std::vector<int> &row_counts, const std::vector<int> &row_displs) {
   const int local_size = static_cast<int>(local_x.size());
   MPI_Allgatherv(local_x.data(), local_size, MPI_DOUBLE, x_global.data(), row_counts.data(), row_displs.data(),
@@ -64,14 +64,14 @@ void allGatherVector(const std::vector<double> &local_x, std::vector<double> &x_
 }
 
 // Новая функция: проверка сходимости для всех процессов
-bool checkConvergenceAll(double local_diff, double epsilon) {
+bool CheckConvergenceAll(double local_diff, double epsilon) {
   double global_diff = 0.0;
   MPI_Allreduce(&local_diff, &global_diff, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   return std::sqrt(global_diff) < epsilon;
 }
 
 // Вычисление локальной нормы разности
-double computeLocalDiff(const std::vector<double> &x_new, const std::vector<double> &x, int local_rows, int start_row) {
+double ComputeLocalDiff(const std::vector<double> &x_new, const std::vector<double> &x, int local_rows, int start_row) {
   double local_diff = 0.0;
   for (int i = 0; i < local_rows; ++i) {
     double d = x_new[start_row + i] - x[start_row + i];
@@ -130,7 +130,7 @@ bool IvanovaPSimpleIterationMethodMPI::RunImpl() {
   std::vector<int> matrix_counts(size);
   std::vector<int> matrix_displs(size);
 
-  computeDistribution(n, size, row_counts, row_displs, matrix_counts, matrix_displs);
+  ComputeDistribution(n, size, row_counts, row_displs, matrix_counts, matrix_displs);
 
   int local_rows = row_counts[rank];
   int start_row = row_displs[rank];
@@ -140,7 +140,7 @@ bool IvanovaPSimpleIterationMethodMPI::RunImpl() {
   std::vector<double> b;
 
   if (rank == 0) {
-    initializeSystem(flat_matrix, b, n);
+    InitializeSystem(flat_matrix, b, n);
   }
 
   // Распределение матрицы по процессам (плоский формат)
@@ -165,15 +165,15 @@ bool IvanovaPSimpleIterationMethodMPI::RunImpl() {
 
   // Метод простой итерации
   for (int iteration = 0; iteration < max_iterations; ++iteration) {
-    computeLocalProduct(local_matrix, x, local_b, local_x_new, local_rows, start_row, n, tau);
+    ComputeLocalProduct(local_matrix, x, local_b, local_x_new, local_rows, start_row, n, tau);
 
-    allGatherVector(local_x_new, x_new, row_counts, row_displs);
+    AllGatherVector(local_x_new, x_new, row_counts, row_displs);
 
-    double local_diff = computeLocalDiff(x_new, x, local_rows, start_row);
+    double local_diff = ComputeLocalDiff(x_new, x, local_rows, start_row);
 
     x.swap(x_new);
 
-    if (checkConvergenceAll(local_diff, epsilon)) {
+    if (CheckConvergenceAll(local_diff, epsilon)) {
       break;
     }
   }

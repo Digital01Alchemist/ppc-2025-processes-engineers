@@ -4,24 +4,26 @@
 #include <cstddef>
 #include <vector>
 
+#include "ivanova_p_simple_iteration_method/common/include/common.hpp"
+
 namespace ivanova_p_simple_iteration_method {
 
 namespace {  // Анонимный namespace для вспомогательных функций
 
 // Новая функция: один шаг метода простой итерации
-void simpleIterationStep(const std::vector<double> &a, const std::vector<double> &x, const std::vector<double> &b,
+void SimpleIterationStep(const std::vector<double> &a, const std::vector<double> &x, const std::vector<double> &b,
                          std::vector<double> &x_new, int n, double tau) {
   for (int i = 0; i < n; ++i) {
     double ax = 0.0;
     for (int j = 0; j < n; ++j) {
-      ax += a[static_cast<size_t>(i) * n + j] * x[j];
+      ax += a[(static_cast<size_t>(i) * n) + j] * x[j];
     }
     x_new[i] = x[i] - (tau * (ax - b[i]));
   }
 }
 
 // Новая функция: вычисление нормы разности
-double computeDiffNorm(const std::vector<double> &x, const std::vector<double> &x_new) {
+double ComputeDiffNorm(const std::vector<double> &x, const std::vector<double> &x_new) {
   double diff = 0.0;
   for (size_t i = 0; i < x.size(); ++i) {
     double d = x_new[i] - x[i];
@@ -57,7 +59,7 @@ bool IvanovaPSimpleIterationMethodSEQ::RunImpl() {
   const size_t matrix_size = static_cast<size_t>(n) * n;
   std::vector<double> a(matrix_size, 0.0);
   for (int i = 0; i < n; ++i) {
-    a[static_cast<size_t>(i) * n + i] = 1.0;
+    a[(static_cast<size_t>(i) * n) + i] = 1.0;
   }
 
   std::vector<double> b(n, 1.0);
@@ -71,9 +73,9 @@ bool IvanovaPSimpleIterationMethodSEQ::RunImpl() {
 
   // Метод простой итерации
   for (int iter = 0; iter < max_iterations; ++iter) {
-    simpleIterationStep(a, x, b, x_new, n, tau);
+    SimpleIterationStep(a, x, b, x_new, n, tau);
 
-    if (computeDiffNorm(x, x_new) < epsilon) {
+    if (ComputeDiffNorm(x, x_new) < epsilon) {
       x = x_new;
       break;
     }

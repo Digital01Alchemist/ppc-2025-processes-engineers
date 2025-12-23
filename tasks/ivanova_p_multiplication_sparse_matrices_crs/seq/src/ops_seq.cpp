@@ -1,10 +1,6 @@
 #include "ivanova_p_multiplication_sparse_matrices_crs/seq/include/ops_seq.hpp"
 
-#include <numeric>
-#include <vector>
-
 #include "ivanova_p_multiplication_sparse_matrices_crs/common/include/common.hpp"
-#include "util/include/util.hpp"
 
 namespace ivanova_p_multiplication_sparse_matrices_crs {
 
@@ -14,8 +10,8 @@ IvanovaPMultiplicationSparseMatricesCrsSEQ::IvanovaPMultiplicationSparseMatrices
 }
 
 bool IvanovaPMultiplicationSparseMatricesCrsSEQ::ValidationImpl() {
-  const auto &[A, B] = GetInput();
-  return A.IsValid() && B.IsValid() && A.n == B.n;
+  const auto &[a, b] = GetInput();
+  return a.IsValid() && b.IsValid() && a.n == b.n;
 }
 
 bool IvanovaPMultiplicationSparseMatricesCrsSEQ::PreProcessingImpl() {
@@ -24,8 +20,8 @@ bool IvanovaPMultiplicationSparseMatricesCrsSEQ::PreProcessingImpl() {
 }
 
 bool IvanovaPMultiplicationSparseMatricesCrsSEQ::RunImpl() {
-  const auto &[A, B] = GetInput();
-  GetOutput() = MultiplyCRS(A, B);
+  const auto &[a, b] = GetInput();
+  GetOutput() = MultiplyCRS(a, b);
   return true;
 }
 

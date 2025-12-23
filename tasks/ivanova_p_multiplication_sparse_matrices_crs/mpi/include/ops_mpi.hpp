@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "ivanova_p_multiplication_sparse_matrices_crs/common/include/common.hpp"
 #include "task/include/task.hpp"
 

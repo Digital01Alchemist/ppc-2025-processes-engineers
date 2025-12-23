@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>  // для size_t
-#include <cstdint>  // для int
 #include <string>   // для std::string
 #include <tuple>    // для std::tuple
 #include <unordered_map>
@@ -20,8 +19,19 @@ struct CRSMatrix {
   std::vector<int> row_ptr;
 
   [[nodiscard]] bool IsValid() const {
-    return n > 0 && row_ptr.size() == static_cast<std::size_t>(n) + 1 && values.size() == col_indices.size() &&
-           row_ptr.back() == static_cast<int>(values.size());
+    if (n <= 0) {
+      return false;
+    }
+    if (row_ptr.size() != static_cast<std::size_t>(n) + 1) {
+      return false;
+    }
+    if (values.size() != col_indices.size()) {
+      return false;
+    }
+    if (row_ptr.back() != static_cast<int>(values.size())) {
+      return false;
+    }
+    return true;
   }
 
   bool operator==(const CRSMatrix &other) const {

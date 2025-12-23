@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -107,7 +108,7 @@ void GatherResults(int n, int rows_per_proc, int extra, int my_start, int count,
 
   // Получаем данные от других процессов
   for (int proc = 1; proc < size; ++proc) {
-    const int proc_start = proc * rows_per_proc + std::min(proc, extra);
+    const int proc_start = (proc * rows_per_proc) + std::min(proc, extra);
     const int proc_count = rows_per_proc + (proc < extra ? 1 : 0);
 
     if (proc_count == 0) {

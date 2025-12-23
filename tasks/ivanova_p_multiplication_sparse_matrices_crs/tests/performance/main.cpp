@@ -95,15 +95,13 @@ class IvanovaPMultiplicationSparseMatricesCrsPerfTests : public ppc::util::BaseR
     }
 
     // корректность индексов столбцов
-    // ИСПРАВЛЕНИЕ: используем простой range-based for loop вместо std::all_of
-    // Это устраняет предупреждение clang-tidy о необходимости ranges
-    for (int col : col_indices) {
-      if (col < 0 || col >= output_data.n) {
-        return false;
-      }
-    }
+    // ИСПРАВЛЕНИЕ: используем std::ranges::all_of вместо std::all_of с итераторами
+    // clang-tidy требует использовать диапазонные алгоритмы (C++20)
+    const bool all_cols_valid =
+        std::ranges::all_of(col_indices,  // передаем контейнер напрямую, а не begin/end
+                            [&output_data](int col) { return col >= 0 && col < output_data.n; });
 
-    return true;
+    return all_cols_valid;
   }
 };
 

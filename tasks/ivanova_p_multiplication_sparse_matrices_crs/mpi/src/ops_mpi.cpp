@@ -106,7 +106,7 @@ bool IvanovaPMultiplicationSparseMatricesCrsMPI::RunImpl() {
     localC.row_ptr[0] = 0;
   }
 
-  // Умножаем локальные строки (исправленная версия)
+  // Умножаем локальные строки
   std::unordered_map<int, double> acc;
 
   for (int i = 0; i < count; i++) {
@@ -123,9 +123,9 @@ bool IvanovaPMultiplicationSparseMatricesCrsMPI::RunImpl() {
       }
     }
 
-    // Собираем только ненулевые значения (исправление проблемы с used_cols)
+    // Собираем только ненулевые значения
     for (const auto &[col, val] : acc) {
-      if (val != 0.0) {  // Можно использовать std::abs(val) > 1e-12 для учёта погрешностей
+      if (val != 0.0) {
         localC.col_indices.push_back(col);
         localC.values.push_back(val);
       }
@@ -144,20 +144,22 @@ bool IvanovaPMultiplicationSparseMatricesCrsMPI::RunImpl() {
     C.row_ptr[0] = 0;
 
     // Копируем свою часть
-    std::copy(localC.values.begin(), localC.values.end(), std::back_inserter(C.values));
-    std::copy(localC.col_indices.begin(), localC.col_indices.end(), std::back_inserter(C.col_indices));
+    C.values = localC.values;
+    C.col_indices = localC.col_indices;
 
     // Заполняем row_ptr для своей части
     for (int i = 0; i < count; i++) {
       C.row_ptr[my_start + i + 1] = localC.row_ptr[i + 1];
     }
 
+    // Текущее смещение для следующих процессов
+    int current_base = static_cast<int>(C.values.size());
+
     // Получаем данные от других процессов
     for (int p = 1; p < size; p++) {
       int p_start = p * rows_per_proc + std::min(p, extra);
       int p_count = rows_per_proc + (p < extra ? 1 : 0);
 
-      // Критическое исправление: пропускаем процессы, которым не досталось строк
       if (p_count == 0) {
         continue;
       }
@@ -171,6 +173,7 @@ bool IvanovaPMultiplicationSparseMatricesCrsMPI::RunImpl() {
       MPI_Recv(p_row_ptr.data(), p_count + 1, MPI_INT, p, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
       if (p_nnz > 0) {
+        // Получаем значения и индексы
         std::vector<double> p_vals(p_nnz);
         std::vector<int> p_cols(p_nnz);
 
@@ -178,28 +181,35 @@ bool IvanovaPMultiplicationSparseMatricesCrsMPI::RunImpl() {
         MPI_Recv(p_cols.data(), p_nnz, MPI_INT, p, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
         // Конвертируем локальные индексы в глобальные
-        int base = static_cast<int>(C.values.size());
         for (int p_i = 0; p_i < p_count; p_i++) {
-          C.row_ptr[p_start + p_i + 1] = base + p_row_ptr[p_i + 1];
+          C.row_ptr[p_start + p_i + 1] = current_base + p_row_ptr[p_i + 1];
         }
 
         C.values.insert(C.values.end(), p_vals.begin(), p_vals.end());
         C.col_indices.insert(C.col_indices.end(), p_cols.begin(), p_cols.end());
+        current_base += p_nnz;
       } else {
-        // Нет ненулевых элементов
+        // Все строки пустые
         for (int p_i = 0; p_i < p_count; p_i++) {
-          C.row_ptr[p_start + p_i + 1] = static_cast<int>(C.values.size());
+          C.row_ptr[p_start + p_i + 1] = current_base;
         }
       }
     }
+
   } else {
     // Отправляем данные на процесс 0
-    // Критическое исправление: отправляем данные ТОЛЬКО если есть что отправлять
     if (count > 0) {
       int local_nnz = static_cast<int>(localC.values.size());
-      MPI_Send(&local_nnz, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-      MPI_Send(localC.row_ptr.data(), count + 1, MPI_INT, 0, 3, MPI_COMM_WORLD);
 
+      // Отправляем количество ненулевых элементов
+      MPI_Send(&local_nnz, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+
+      // Отправляем row_ptr
+      if (!localC.row_ptr.empty()) {
+        MPI_Send(localC.row_ptr.data(), count + 1, MPI_INT, 0, 3, MPI_COMM_WORLD);
+      }
+
+      // Отправляем значения и индексы только если они есть
       if (local_nnz > 0) {
         MPI_Send(localC.values.data(), local_nnz, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
         MPI_Send(localC.col_indices.data(), local_nnz, MPI_INT, 0, 2, MPI_COMM_WORLD);

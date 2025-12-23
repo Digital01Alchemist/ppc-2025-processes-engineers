@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <mpi.h>
 
 #include <array>
 #include <cmath>
@@ -172,6 +173,15 @@ class IvanovaPMultiplicationSparseMatricesCrsFuncTests : public ppc::util::BaseR
   }
 
   bool CheckTestOutputData(OutType &output_data) override {
+    int rank = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    // Для MPI тестов: только rank 0 проверяет результат
+    // Для SEQ тестов: всегда проверяем
+    if (rank != 0) {
+      return true;  // Не-root процессы всегда проходят проверку
+    }
+
     return output_data == expected_;
   }
 

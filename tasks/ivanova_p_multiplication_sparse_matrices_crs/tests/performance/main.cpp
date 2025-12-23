@@ -26,7 +26,7 @@ class IvanovaPMultiplicationSparseMatricesCrsPerfTests : public ppc::util::BaseR
     a.row_ptr.resize(static_cast<std::size_t>(kMatrixSize) + 1);
     b.row_ptr.resize(static_cast<std::size_t>(kMatrixSize) + 1);
 
-    // -------- Matrix a --------
+    //  Matrix a
     // a(i,i) = 1, a(i,i+1) = 2
     int nnz_a = 0;
     a.row_ptr[0] = 0;
@@ -44,7 +44,7 @@ class IvanovaPMultiplicationSparseMatricesCrsPerfTests : public ppc::util::BaseR
       a.row_ptr[i + 1] = nnz_a;
     }
 
-    // -------- Matrix b --------
+    //  Matrix b
     // b(i,i) = 3
     int nnz_b = 0;
     b.row_ptr[0] = 0;

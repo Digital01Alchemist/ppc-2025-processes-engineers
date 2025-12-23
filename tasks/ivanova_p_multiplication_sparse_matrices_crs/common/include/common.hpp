@@ -10,8 +10,6 @@
 
 namespace ivanova_p_multiplication_sparse_matrices_crs {
 
-// -------------------- CRS MATRIX --------------------
-
 struct CRSMatrix {
   int n = 0;
   std::vector<double> values;
@@ -40,14 +38,10 @@ struct CRSMatrix {
   }
 };
 
-// -------------------- TYPES --------------------
-
 using InType = std::tuple<CRSMatrix, CRSMatrix>;  // матрицы a и b
 using OutType = CRSMatrix;
 using TestType = std::tuple<int, std::string>;
 using BaseTask = ppc::task::Task<InType, OutType>;
-
-// -------------------- CRS × CRS --------------------
 
 inline CRSMatrix MultiplyCRS(const CRSMatrix &matrix_a, const CRSMatrix &matrix_b) {
   CRSMatrix result;

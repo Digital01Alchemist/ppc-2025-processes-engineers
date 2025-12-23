@@ -33,7 +33,7 @@ class IvanovaPMultiplicationSparseMatricesCrsFuncTests : public ppc::util::BaseR
     CRSMatrix b;
 
     switch (test_id) {
-      // === Базовые тесты с единичной матрицей ===
+      // Базовые тесты с единичной матрицей
       case 1: {  // I * I = I (3x3)
         a = CreateIdentityMatrix(3);
         b = CreateIdentityMatrix(3);
@@ -46,7 +46,7 @@ class IvanovaPMultiplicationSparseMatricesCrsFuncTests : public ppc::util::BaseR
         break;
       }
 
-      // === Тесты с нулевой матрицей ===
+      //  Тесты с нулевой матрицей
       case 5: {  // A * 0 = 0
         a = CreateDiagonalMatrix(4, 5.0);
         b = CreateZeroMatrix(4);
@@ -58,7 +58,7 @@ class IvanovaPMultiplicationSparseMatricesCrsFuncTests : public ppc::util::BaseR
         break;
       }
 
-      // === Диагональные матрицы ===
+      //  Диагональные матрицы
       case 8: {  // D1 * D2 = D3 (диагонали перемножаются)
         a = CreateDiagonalMatrix(5, 2.0);
         b = CreateDiagonalMatrix(5, 3.0);
@@ -70,7 +70,7 @@ class IvanovaPMultiplicationSparseMatricesCrsFuncTests : public ppc::util::BaseR
         break;
       }
 
-      // === Трёхдиагональные матрицы ===
+      //  Трёхдиагональные матрицы
       case 10: {  // Tri * Tri
         a = CreateTridiagonalMatrix(5, 1.0, 4.0, 1.0);
         b = CreateTridiagonalMatrix(5, 1.0, 4.0, 1.0);
@@ -82,7 +82,7 @@ class IvanovaPMultiplicationSparseMatricesCrsFuncTests : public ppc::util::BaseR
         break;
       }
 
-      // === Треугольные матрицы ===
+      //  Треугольные матрицы
       case 13: {  // Upper * Upper
         a = CreateUpperTriangularMatrix(4, 1.0);
         b = CreateUpperTriangularMatrix(4, 1.0);
@@ -98,7 +98,7 @@ class IvanovaPMultiplicationSparseMatricesCrsFuncTests : public ppc::util::BaseR
         b = CreateLowerTriangularMatrix(5, 1.0);
         break;
       }
-      // === Матрицы с одним элементом ===
+      //  Матрицы с одним элементом
       case 17: {  // Один элемент в (0,0)
         a = CreateSingleElementMatrix(4, 0, 0, 5.0);
         b = CreateSingleElementMatrix(4, 0, 0, 3.0);
@@ -110,20 +110,20 @@ class IvanovaPMultiplicationSparseMatricesCrsFuncTests : public ppc::util::BaseR
         break;
       }
 
-      // === Матрицы с пустыми строками ===
+      //  Матрицы с пустыми строками
       case 20: {  // Пустые строки * диагональ
         a = CreateMatrixWithEmptyRows(6);
         b = CreateDiagonalMatrix(6, 2.0);
         break;
       }
-      // === Антидиагональные матрицы ===
+      //  Антидиагональные матрицы
       case 23: {  // Anti * Anti
         a = CreateAntiDiagonalMatrix(4, 1.0);
         b = CreateAntiDiagonalMatrix(4, 1.0);
         break;
       }
 
-      // === Случайные разреженные матрицы ===
+      // Случайные разреженные матрицы
       case 27: {  // Низкая плотность 10%
         a = CreateRandomSparseMatrix(10, 0.1, 42);
         b = CreateRandomSparseMatrix(10, 0.1, 43);
@@ -134,7 +134,7 @@ class IvanovaPMultiplicationSparseMatricesCrsFuncTests : public ppc::util::BaseR
         b = CreateRandomSparseMatrix(6, 0.5, 47);
         break;
       }
-      // === Специальные значения ===
+      //  Специальные значения
       case 31: {  // Отрицательные значения
         a = CreateDiagonalMatrix(5, -2.0);
         b = CreateDiagonalMatrix(5, -3.0);
@@ -145,7 +145,7 @@ class IvanovaPMultiplicationSparseMatricesCrsFuncTests : public ppc::util::BaseR
         b = CreateTridiagonalMatrix(5, 1.0, -2.0, 1.0);
         break;
       }
-      // === Граничные размеры ===
+      //  Граничные размеры
       case 35: {  // Минимальный размер 1x1
         a = CreateDiagonalMatrix(1, 5.0);
         b = CreateDiagonalMatrix(1, 3.0);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstddef>
 #include <random>
 #include <vector>
 
@@ -10,169 +11,182 @@ namespace ivanova_p_multiplication_sparse_matrices_crs {
 
 // Единичная матрица
 inline CRSMatrix CreateIdentityMatrix(int n) {
-  CRSMatrix I;
-  I.n = n;
-  I.row_ptr.resize(n + 1);
-  I.row_ptr[0] = 0;
-  for (int i = 0; i < n; i++) {
-    I.col_indices.push_back(i);
-    I.values.push_back(1.0);
-    I.row_ptr[i + 1] = i + 1;
+  CRSMatrix identity_matrix;
+  identity_matrix.n = n;
+  identity_matrix.row_ptr.resize(static_cast<std::size_t>(n) + 1);
+  identity_matrix.row_ptr[0] = 0;
+  for (int idx = 0; idx < n; ++idx) {
+    identity_matrix.col_indices.push_back(idx);
+    identity_matrix.values.push_back(1.0);
+    identity_matrix.row_ptr[idx + 1] = idx + 1;
   }
-  return I;
+  return identity_matrix;
 }
 
 // Нулевая матрица (полностью разреженная)
 inline CRSMatrix CreateZeroMatrix(int n) {
-  CRSMatrix Z;
-  Z.n = n;
-  Z.row_ptr.resize(n + 1, 0);
-  return Z;
+  CRSMatrix zero_matrix;
+  zero_matrix.n = n;
+  zero_matrix.row_ptr.resize(static_cast<std::size_t>(n) + 1, 0);
+  return zero_matrix;
 }
 
 // Диагональная матрица с заданным значением
 inline CRSMatrix CreateDiagonalMatrix(int n, double val) {
-  CRSMatrix D;
-  D.n = n;
-  D.row_ptr.resize(n + 1);
-  D.row_ptr[0] = 0;
-  for (int i = 0; i < n; i++) {
-    D.col_indices.push_back(i);
-    D.values.push_back(val);
-    D.row_ptr[i + 1] = i + 1;
+  CRSMatrix diagonal_matrix;
+  diagonal_matrix.n = n;
+  diagonal_matrix.row_ptr.resize(static_cast<std::size_t>(n) + 1);
+  diagonal_matrix.row_ptr[0] = 0;
+  for (int idx = 0; idx < n; ++idx) {
+    diagonal_matrix.col_indices.push_back(idx);
+    diagonal_matrix.values.push_back(val);
+    diagonal_matrix.row_ptr[idx + 1] = idx + 1;
   }
-  return D;
+  return diagonal_matrix;
 }
 
 // Трёхдиагональная матрица
 inline CRSMatrix CreateTridiagonalMatrix(int n, double sub, double diag, double sup) {
-  CRSMatrix T;
-  T.n = n;
-  T.row_ptr.resize(n + 1);
-  int nnz = 0;
-  T.row_ptr[0] = 0;
-  for (int i = 0; i < n; i++) {
-    if (i > 0) {
-      T.col_indices.push_back(i - 1);
-      T.values.push_back(sub);
-      nnz++;
+  CRSMatrix tridiagonal_matrix;
+  tridiagonal_matrix.n = n;
+  tridiagonal_matrix.row_ptr.resize(static_cast<std::size_t>(n) + 1);
+  int non_zero_count = 0;
+  tridiagonal_matrix.row_ptr[0] = 0;
+
+  for (int idx = 0; idx < n; ++idx) {
+    if (idx > 0) {
+      tridiagonal_matrix.col_indices.push_back(idx - 1);
+      tridiagonal_matrix.values.push_back(sub);
+      ++non_zero_count;
     }
-    T.col_indices.push_back(i);
-    T.values.push_back(diag);
-    nnz++;
-    if (i < n - 1) {
-      T.col_indices.push_back(i + 1);
-      T.values.push_back(sup);
-      nnz++;
+
+    tridiagonal_matrix.col_indices.push_back(idx);
+    tridiagonal_matrix.values.push_back(diag);
+    ++non_zero_count;
+
+    if (idx < n - 1) {
+      tridiagonal_matrix.col_indices.push_back(idx + 1);
+      tridiagonal_matrix.values.push_back(sup);
+      ++non_zero_count;
     }
-    T.row_ptr[i + 1] = nnz;
+
+    tridiagonal_matrix.row_ptr[idx + 1] = non_zero_count;
   }
-  return T;
+  return tridiagonal_matrix;
 }
 
 // Матрица с одним элементом
 inline CRSMatrix CreateSingleElementMatrix(int n, int row, int col, double val) {
-  CRSMatrix S;
-  S.n = n;
-  S.row_ptr.resize(n + 1, 0);
-  for (int i = 0; i <= n; i++) {
-    S.row_ptr[i] = (i <= row) ? 0 : 1;
+  CRSMatrix single_element_matrix;
+  single_element_matrix.n = n;
+  single_element_matrix.row_ptr.resize(static_cast<std::size_t>(n) + 1, 0);
+
+  for (int idx = 0; idx <= n; ++idx) {
+    single_element_matrix.row_ptr[idx] = (idx <= row) ? 0 : 1;
   }
-  S.col_indices.push_back(col);
-  S.values.push_back(val);
-  return S;
+
+  single_element_matrix.col_indices.push_back(col);
+  single_element_matrix.values.push_back(val);
+  return single_element_matrix;
 }
 
 // Верхнетреугольная матрица
 inline CRSMatrix CreateUpperTriangularMatrix(int n, double val) {
-  CRSMatrix U;
-  U.n = n;
-  U.row_ptr.resize(n + 1);
-  int nnz = 0;
-  U.row_ptr[0] = 0;
-  for (int i = 0; i < n; i++) {
-    for (int j = i; j < n; j++) {
-      U.col_indices.push_back(j);
-      U.values.push_back(val);
-      nnz++;
+  CRSMatrix upper_triangular_matrix;
+  upper_triangular_matrix.n = n;
+  upper_triangular_matrix.row_ptr.resize(static_cast<std::size_t>(n) + 1);
+  int non_zero_count = 0;
+  upper_triangular_matrix.row_ptr[0] = 0;
+
+  for (int row_idx = 0; row_idx < n; ++row_idx) {
+    for (int col_idx = row_idx; col_idx < n; ++col_idx) {
+      upper_triangular_matrix.col_indices.push_back(col_idx);
+      upper_triangular_matrix.values.push_back(val);
+      ++non_zero_count;
     }
-    U.row_ptr[i + 1] = nnz;
+    upper_triangular_matrix.row_ptr[row_idx + 1] = non_zero_count;
   }
-  return U;
+  return upper_triangular_matrix;
 }
 
 // Нижнетреугольная матрица
 inline CRSMatrix CreateLowerTriangularMatrix(int n, double val) {
-  CRSMatrix L;
-  L.n = n;
-  L.row_ptr.resize(n + 1);
-  int nnz = 0;
-  L.row_ptr[0] = 0;
-  for (int i = 0; i < n; i++) {
-    for (int j = 0; j <= i; j++) {
-      L.col_indices.push_back(j);
-      L.values.push_back(val);
-      nnz++;
+  CRSMatrix lower_triangular_matrix;
+  lower_triangular_matrix.n = n;
+  lower_triangular_matrix.row_ptr.resize(static_cast<std::size_t>(n) + 1);
+  int non_zero_count = 0;
+  lower_triangular_matrix.row_ptr[0] = 0;
+
+  for (int row_idx = 0; row_idx < n; ++row_idx) {
+    for (int col_idx = 0; col_idx <= row_idx; ++col_idx) {
+      lower_triangular_matrix.col_indices.push_back(col_idx);
+      lower_triangular_matrix.values.push_back(val);
+      ++non_zero_count;
     }
-    L.row_ptr[i + 1] = nnz;
+    lower_triangular_matrix.row_ptr[row_idx + 1] = non_zero_count;
   }
-  return L;
+  return lower_triangular_matrix;
 }
 
 // Случайная разреженная матрица
 inline CRSMatrix CreateRandomSparseMatrix(int n, double density, unsigned int seed) {
-  CRSMatrix R;
-  R.n = n;
-  R.row_ptr.resize(n + 1);
-  std::mt19937 gen(seed);
-  std::uniform_real_distribution<> prob(0.0, 1.0);
-  std::uniform_real_distribution<> val(-10.0, 10.0);
+  CRSMatrix random_matrix;
+  random_matrix.n = n;
+  random_matrix.row_ptr.resize(static_cast<std::size_t>(n) + 1);
 
-  int nnz = 0;
-  R.row_ptr[0] = 0;
-  for (int i = 0; i < n; i++) {
-    for (int j = 0; j < n; j++) {
-      if (prob(gen) < density) {
-        R.col_indices.push_back(j);
-        R.values.push_back(val(gen));
-        nnz++;
+  std::mt19937 generator(seed);
+  std::uniform_real_distribution<> probability_distribution(0.0, 1.0);
+  std::uniform_real_distribution<> value_distribution(-10.0, 10.0);
+
+  int non_zero_count = 0;
+  random_matrix.row_ptr[0] = 0;
+
+  for (int row_idx = 0; row_idx < n; ++row_idx) {
+    for (int col_idx = 0; col_idx < n; ++col_idx) {
+      if (probability_distribution(generator) < density) {
+        random_matrix.col_indices.push_back(col_idx);
+        random_matrix.values.push_back(value_distribution(generator));
+        ++non_zero_count;
       }
     }
-    R.row_ptr[i + 1] = nnz;
+    random_matrix.row_ptr[row_idx + 1] = non_zero_count;
   }
-  return R;
+  return random_matrix;
 }
 
 // Матрица с пустыми строками (только чётные строки имеют элементы)
 inline CRSMatrix CreateMatrixWithEmptyRows(int n) {
-  CRSMatrix M;
-  M.n = n;
-  M.row_ptr.resize(n + 1);
-  int nnz = 0;
-  M.row_ptr[0] = 0;
-  for (int i = 0; i < n; i++) {
-    if (i % 2 == 0) {
-      M.col_indices.push_back(i);
-      M.values.push_back(static_cast<double>(i + 1));
-      nnz++;
+  CRSMatrix matrix_with_empty_rows;
+  matrix_with_empty_rows.n = n;
+  matrix_with_empty_rows.row_ptr.resize(static_cast<std::size_t>(n) + 1);
+
+  int non_zero_count = 0;
+  matrix_with_empty_rows.row_ptr[0] = 0;
+
+  for (int row_idx = 0; row_idx < n; ++row_idx) {
+    if (row_idx % 2 == 0) {
+      matrix_with_empty_rows.col_indices.push_back(row_idx);
+      matrix_with_empty_rows.values.push_back(static_cast<double>(row_idx + 1));
+      ++non_zero_count;
     }
-    M.row_ptr[i + 1] = nnz;
+    matrix_with_empty_rows.row_ptr[row_idx + 1] = non_zero_count;
   }
-  return M;
+  return matrix_with_empty_rows;
 }
 
 // Антидиагональная матрица
 inline CRSMatrix CreateAntiDiagonalMatrix(int n, double val) {
-  CRSMatrix A;
-  A.n = n;
-  A.row_ptr.resize(n + 1);
-  A.row_ptr[0] = 0;
-  for (int i = 0; i < n; i++) {
-    A.col_indices.push_back(n - 1 - i);
-    A.values.push_back(val);
-    A.row_ptr[i + 1] = i + 1;
+  CRSMatrix anti_diagonal_matrix;
+  anti_diagonal_matrix.n = n;
+  anti_diagonal_matrix.row_ptr.resize(static_cast<std::size_t>(n) + 1);
+  anti_diagonal_matrix.row_ptr[0] = 0;
+
+  for (int idx = 0; idx < n; ++idx) {
+    anti_diagonal_matrix.col_indices.push_back(n - 1 - idx);
+    anti_diagonal_matrix.values.push_back(val);
+    anti_diagonal_matrix.row_ptr[idx + 1] = idx + 1;
   }
-  return A;
+  return anti_diagonal_matrix;
 }
 
 }  // namespace ivanova_p_multiplication_sparse_matrices_crs

@@ -2,14 +2,171 @@
 
 #include <mpi.h>
 
-#include <numeric>
+#include <algorithm>
+#include <cstddef>
 #include <unordered_map>
 #include <vector>
 
 #include "ivanova_p_multiplication_sparse_matrices_crs/common/include/common.hpp"
-#include "util/include/util.hpp"
 
 namespace ivanova_p_multiplication_sparse_matrices_crs {
+
+// Вспомогательные функции
+namespace {
+void BroadcastMatrices(int n, int a_nnz, int b_nnz, CRSMatrix &local_a, CRSMatrix &local_b,
+                       const std::tuple<CRSMatrix, CRSMatrix> &input) {
+  local_a.n = n;
+  local_a.values.resize(static_cast<std::size_t>(a_nnz));
+  local_a.col_indices.resize(static_cast<std::size_t>(a_nnz));
+  local_a.row_ptr.resize(static_cast<std::size_t>(n) + 1);
+
+  local_b.n = n;
+  local_b.values.resize(static_cast<std::size_t>(b_nnz));
+  local_b.col_indices.resize(static_cast<std::size_t>(b_nnz));
+  local_b.row_ptr.resize(static_cast<std::size_t>(n) + 1);
+
+  int rank = 0;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+  if (rank == 0) {
+    const auto &[matrix_a, matrix_b] = input;
+    local_a = matrix_a;
+    local_b = matrix_b;
+  }
+
+  // Рассылаем данные матрицы A
+  if (a_nnz > 0) {
+    MPI_Bcast(local_a.values.data(), a_nnz, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(local_a.col_indices.data(), a_nnz, MPI_INT, 0, MPI_COMM_WORLD);
+  }
+  MPI_Bcast(local_a.row_ptr.data(), n + 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+  // Рассылаем данные матрицы B
+  if (b_nnz > 0) {
+    MPI_Bcast(local_b.values.data(), b_nnz, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(local_b.col_indices.data(), b_nnz, MPI_INT, 0, MPI_COMM_WORLD);
+  }
+  MPI_Bcast(local_b.row_ptr.data(), n + 1, MPI_INT, 0, MPI_COMM_WORLD);
+}
+
+void ComputeLocalRows(int start_row, int count, const CRSMatrix &local_a, const CRSMatrix &local_b,
+                      CRSMatrix &local_c) {
+  local_c.n = local_a.n;
+  if (count > 0) {
+    local_c.row_ptr.resize(static_cast<std::size_t>(count) + 1);
+    local_c.row_ptr[0] = 0;
+  }
+
+  std::unordered_map<int, double> accumulator;
+
+  for (int i = 0; i < count; ++i) {
+    const int global_row = start_row + i;
+    accumulator.clear();
+
+    for (int ia = local_a.row_ptr[global_row]; ia < local_a.row_ptr[global_row + 1]; ++ia) {
+      const int k = local_a.col_indices[ia];
+      const double a_value = local_a.values[ia];
+
+      for (int ib = local_b.row_ptr[k]; ib < local_b.row_ptr[k + 1]; ++ib) {
+        const int col = local_b.col_indices[ib];
+        accumulator[col] += a_value * local_b.values[ib];
+      }
+    }
+
+    // Собираем только ненулевые значения
+    for (const auto &[col, val] : accumulator) {
+      if (val != 0.0) {
+        local_c.col_indices.push_back(col);
+        local_c.values.push_back(val);
+      }
+    }
+
+    if (count > 0) {
+      local_c.row_ptr[i + 1] = static_cast<int>(local_c.values.size());
+    }
+  }
+}
+
+void GatherResults(int n, int rows_per_proc, int extra, int my_start, int count, int size, const CRSMatrix &local_c,
+                   CRSMatrix &result) {
+  result.n = n;
+  result.row_ptr.resize(static_cast<std::size_t>(n) + 1);
+  result.row_ptr[0] = 0;
+
+  // Копируем свою часть (процесс 0)
+  result.values = local_c.values;
+  result.col_indices = local_c.col_indices;
+
+  // Заполняем row_ptr для своей части
+  for (int i = 0; i < count; ++i) {
+    result.row_ptr[my_start + i + 1] = local_c.row_ptr[i + 1];
+  }
+
+  // Текущее смещение для следующих процессов
+  int current_base = static_cast<int>(result.values.size());
+
+  // Получаем данные от других процессов
+  for (int proc = 1; proc < size; ++proc) {
+    const int proc_start = proc * rows_per_proc + std::min(proc, extra);
+    const int proc_count = rows_per_proc + (proc < extra ? 1 : 0);
+
+    if (proc_count == 0) {
+      continue;
+    }
+
+    // Получаем количество ненулевых элементов
+    int proc_nnz = 0;
+    MPI_Recv(&proc_nnz, 1, MPI_INT, proc, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+    // Получаем row_ptr
+    std::vector<int> proc_row_ptr(static_cast<std::size_t>(proc_count) + 1);
+    MPI_Recv(proc_row_ptr.data(), proc_count + 1, MPI_INT, proc, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+    if (proc_nnz > 0) {
+      // Получаем значения и индексы
+      std::vector<double> proc_values(static_cast<std::size_t>(proc_nnz));
+      std::vector<int> proc_cols(static_cast<std::size_t>(proc_nnz));
+
+      MPI_Recv(proc_values.data(), proc_nnz, MPI_DOUBLE, proc, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      MPI_Recv(proc_cols.data(), proc_nnz, MPI_INT, proc, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+      // Конвертируем локальные индексы в глобальные
+      for (int proc_i = 0; proc_i < proc_count; ++proc_i) {
+        result.row_ptr[proc_start + proc_i + 1] = current_base + proc_row_ptr[proc_i + 1];
+      }
+
+      result.values.insert(result.values.end(), proc_values.begin(), proc_values.end());
+      result.col_indices.insert(result.col_indices.end(), proc_cols.begin(), proc_cols.end());
+      current_base += proc_nnz;
+    } else {
+      // Все строки пустые
+      for (int proc_i = 0; proc_i < proc_count; ++proc_i) {
+        result.row_ptr[proc_start + proc_i + 1] = current_base;
+      }
+    }
+  }
+}
+
+void SendResultsToRoot(int count, const CRSMatrix &local_c) {
+  if (count > 0) {
+    const int local_nnz = static_cast<int>(local_c.values.size());
+
+    // Отправляем количество ненулевых элементов
+    MPI_Send(&local_nnz, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+
+    // Отправляем row_ptr
+    if (!local_c.row_ptr.empty()) {
+      MPI_Send(local_c.row_ptr.data(), count + 1, MPI_INT, 0, 3, MPI_COMM_WORLD);
+    }
+
+    // Отправляем значения и индексы только если они есть
+    if (local_nnz > 0) {
+      MPI_Send(local_c.values.data(), local_nnz, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
+      MPI_Send(local_c.col_indices.data(), local_nnz, MPI_INT, 0, 2, MPI_COMM_WORLD);
+    }
+  }
+}
+}  // namespace
 
 IvanovaPMultiplicationSparseMatricesCrsMPI::IvanovaPMultiplicationSparseMatricesCrsMPI(const InType &in) {
   SetTypeOfTask(GetStaticTypeOfTask());
@@ -17,28 +174,32 @@ IvanovaPMultiplicationSparseMatricesCrsMPI::IvanovaPMultiplicationSparseMatrices
 }
 
 bool IvanovaPMultiplicationSparseMatricesCrsMPI::ValidationImpl() {
-  int rank;
+  int rank = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   int valid = 0;
   if (rank == 0) {
-    const auto &[A, B] = GetInput();
-    valid = (A.IsValid() && B.IsValid() && A.n == B.n) ? 1 : 0;
+    const auto &[matrix_a, matrix_b] = GetInput();
+    valid = (matrix_a.IsValid() && matrix_b.IsValid() && matrix_a.n == matrix_b.n) ? 1 : 0;
   }
 
   MPI_Bcast(&valid, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  return valid;
+  return valid != 0;
 }
 
 bool IvanovaPMultiplicationSparseMatricesCrsMPI::PreProcessingImpl() {
-  if (int rank = 0; (MPI_Comm_rank(MPI_COMM_WORLD, &rank), rank == 0)) {
+  int rank = 0;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+  if (rank == 0) {
     GetOutput() = CRSMatrix{};
   }
   return true;
 }
 
 bool IvanovaPMultiplicationSparseMatricesCrsMPI::RunImpl() {
-  int rank, size;
+  int rank = 0;
+  int size = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
@@ -48,180 +209,45 @@ bool IvanovaPMultiplicationSparseMatricesCrsMPI::RunImpl() {
   int b_nnz = 0;
 
   if (rank == 0) {
-    const auto &[A, B] = GetInput();
-    n = A.n;
-    a_nnz = static_cast<int>(A.values.size());
-    b_nnz = static_cast<int>(B.values.size());
+    const auto &[matrix_a, matrix_b] = GetInput();
+    n = matrix_a.n;
+    a_nnz = static_cast<int>(matrix_a.values.size());
+    b_nnz = static_cast<int>(matrix_b.values.size());
   }
 
   MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&a_nnz, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&b_nnz, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-  // Локальные копии матриц A и B
-  CRSMatrix localA;
-  CRSMatrix localB;
+  // Локальные копии матриц
+  CRSMatrix local_a;
+  CRSMatrix local_b;
 
-  localA.n = n;
-  localA.values.resize(a_nnz);
-  localA.col_indices.resize(a_nnz);
-  localA.row_ptr.resize(n + 1);
-
-  localB.n = n;
-  localB.values.resize(b_nnz);
-  localB.col_indices.resize(b_nnz);
-  localB.row_ptr.resize(n + 1);
-
-  if (rank == 0) {
-    const auto &[A, B] = GetInput();
-    localA = A;
-    localB = B;
-  }
-
-  // Рассылаем данные A
-  if (a_nnz > 0) {
-    MPI_Bcast(localA.values.data(), a_nnz, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Bcast(localA.col_indices.data(), a_nnz, MPI_INT, 0, MPI_COMM_WORLD);
-  }
-  MPI_Bcast(localA.row_ptr.data(), n + 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-  // Рассылаем данные B
-  if (b_nnz > 0) {
-    MPI_Bcast(localB.values.data(), b_nnz, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Bcast(localB.col_indices.data(), b_nnz, MPI_INT, 0, MPI_COMM_WORLD);
-  }
-  MPI_Bcast(localB.row_ptr.data(), n + 1, MPI_INT, 0, MPI_COMM_WORLD);
+  // Передаем входные данные во вспомогательную функцию
+  BroadcastMatrices(n, a_nnz, b_nnz, local_a, local_b, GetInput());
 
   // Распределяем строки матрицы A
-  int rows_per_proc = n / size;
-  int extra = n % size;
-  int my_start = rank * rows_per_proc + std::min(rank, extra);
-  int count = rows_per_proc + (rank < extra ? 1 : 0);
+  const int rows_per_proc = n / size;
+  const int extra = n % size;
+  const int my_start = (rank * rows_per_proc) + std::min(rank, extra);
+  const int count = rows_per_proc + (rank < extra ? 1 : 0);
 
   // Локальная часть матрицы C
-  CRSMatrix localC;
-  localC.n = n;
-  if (count > 0) {
-    localC.row_ptr.resize(static_cast<size_t>(count) + 1);
-    localC.row_ptr[0] = 0;
-  }
-
-  // Умножаем локальные строки
-  std::unordered_map<int, double> acc;
-
-  for (int i = 0; i < count; i++) {
-    int global_row = my_start + i;
-    acc.clear();
-
-    for (int ia = localA.row_ptr[global_row]; ia < localA.row_ptr[global_row + 1]; ia++) {
-      int k = localA.col_indices[ia];
-      double a = localA.values[ia];
-
-      for (int ib = localB.row_ptr[k]; ib < localB.row_ptr[k + 1]; ib++) {
-        int col = localB.col_indices[ib];
-        acc[col] += a * localB.values[ib];
-      }
-    }
-
-    // Собираем только ненулевые значения
-    for (const auto &[col, val] : acc) {
-      if (val != 0.0) {
-        localC.col_indices.push_back(col);
-        localC.values.push_back(val);
-      }
-    }
-
-    if (count > 0) {
-      localC.row_ptr[i + 1] = static_cast<int>(localC.values.size());
-    }
-  }
+  CRSMatrix local_c;
+  ComputeLocalRows(my_start, count, local_a, local_b, local_c);
 
   // ---------- Собираем результаты на процессе 0 ----------
   if (rank == 0) {
-    CRSMatrix &C = GetOutput();
-    C.n = n;
-    C.row_ptr.resize(static_cast<size_t>(n) + 1);
-    C.row_ptr[0] = 0;
-
-    // Копируем свою часть
-    C.values = localC.values;
-    C.col_indices = localC.col_indices;
-
-    // Заполняем row_ptr для своей части
-    for (int i = 0; i < count; i++) {
-      C.row_ptr[my_start + i + 1] = localC.row_ptr[i + 1];
-    }
-
-    // Текущее смещение для следующих процессов
-    int current_base = static_cast<int>(C.values.size());
-
-    // Получаем данные от других процессов
-    for (int p = 1; p < size; p++) {
-      int p_start = p * rows_per_proc + std::min(p, extra);
-      int p_count = rows_per_proc + (p < extra ? 1 : 0);
-
-      if (p_count == 0) {
-        continue;
-      }
-
-      // Получаем количество ненулевых элементов
-      int p_nnz = 0;
-      MPI_Recv(&p_nnz, 1, MPI_INT, p, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-      // Получаем row_ptr
-      std::vector<int> p_row_ptr(static_cast<size_t>(p_count) + 1);
-      MPI_Recv(p_row_ptr.data(), p_count + 1, MPI_INT, p, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-      if (p_nnz > 0) {
-        // Получаем значения и индексы
-        std::vector<double> p_vals(p_nnz);
-        std::vector<int> p_cols(p_nnz);
-
-        MPI_Recv(p_vals.data(), p_nnz, MPI_DOUBLE, p, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Recv(p_cols.data(), p_nnz, MPI_INT, p, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-        // Конвертируем локальные индексы в глобальные
-        for (int p_i = 0; p_i < p_count; p_i++) {
-          C.row_ptr[p_start + p_i + 1] = current_base + p_row_ptr[p_i + 1];
-        }
-
-        C.values.insert(C.values.end(), p_vals.begin(), p_vals.end());
-        C.col_indices.insert(C.col_indices.end(), p_cols.begin(), p_cols.end());
-        current_base += p_nnz;
-      } else {
-        // Все строки пустые
-        for (int p_i = 0; p_i < p_count; p_i++) {
-          C.row_ptr[p_start + p_i + 1] = current_base;
-        }
-      }
-    }
-
+    GatherResults(n, rows_per_proc, extra, my_start, count, size, local_c, GetOutput());
   } else {
-    // Отправляем данные на процесс 0
-    if (count > 0) {
-      int local_nnz = static_cast<int>(localC.values.size());
-
-      // Отправляем количество ненулевых элементов
-      MPI_Send(&local_nnz, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-
-      // Отправляем row_ptr
-      if (!localC.row_ptr.empty()) {
-        MPI_Send(localC.row_ptr.data(), count + 1, MPI_INT, 0, 3, MPI_COMM_WORLD);
-      }
-
-      // Отправляем значения и индексы только если они есть
-      if (local_nnz > 0) {
-        MPI_Send(localC.values.data(), local_nnz, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
-        MPI_Send(localC.col_indices.data(), local_nnz, MPI_INT, 0, 2, MPI_COMM_WORLD);
-      }
-    }
+    SendResultsToRoot(count, local_c);
   }
 
   return true;
 }
 
 bool IvanovaPMultiplicationSparseMatricesCrsMPI::PostProcessingImpl() {
-  int rank;
+  int rank = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   return rank != 0 || GetOutput().IsValid();
 }

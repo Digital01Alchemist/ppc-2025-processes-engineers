@@ -42,25 +42,48 @@ bool IvanovaPMultiplicationSparseMatricesCrsMPI::RunImpl() {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  const auto &[A, B] = GetInput();
+  // Рассылаем размеры матриц
+  int n = 0;
+  int a_nnz = 0;
+  int b_nnz = 0;
 
-  // Рассылаем размер матрицы и данные B всем процессам
-  int n = A.n;
+  if (rank == 0) {
+    const auto &[A, B] = GetInput();
+    n = A.n;
+    a_nnz = static_cast<int>(A.values.size());
+    b_nnz = static_cast<int>(B.values.size());
+  }
+
   MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-  int b_nnz = static_cast<int>(B.values.size());
+  MPI_Bcast(&a_nnz, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&b_nnz, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-  // Локальная копия матрицы B
+  // Локальные копии матриц A и B
+  CRSMatrix localA;
   CRSMatrix localB;
+
+  localA.n = n;
+  localA.values.resize(a_nnz);
+  localA.col_indices.resize(a_nnz);
+  localA.row_ptr.resize(n + 1);
+
+  localB.n = n;
+  localB.values.resize(b_nnz);
+  localB.col_indices.resize(b_nnz);
+  localB.row_ptr.resize(n + 1);
+
   if (rank == 0) {
+    const auto &[A, B] = GetInput();
+    localA = A;
     localB = B;
-  } else {
-    localB.n = n;
-    localB.values.resize(b_nnz);
-    localB.col_indices.resize(b_nnz);
-    localB.row_ptr.resize(n + 1);
   }
+
+  // Рассылаем данные A
+  if (a_nnz > 0) {
+    MPI_Bcast(localA.values.data(), a_nnz, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(localA.col_indices.data(), a_nnz, MPI_INT, 0, MPI_COMM_WORLD);
+  }
+  MPI_Bcast(localA.row_ptr.data(), n + 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   // Рассылаем данные B
   if (b_nnz > 0) {
@@ -68,26 +91,6 @@ bool IvanovaPMultiplicationSparseMatricesCrsMPI::RunImpl() {
     MPI_Bcast(localB.col_indices.data(), b_nnz, MPI_INT, 0, MPI_COMM_WORLD);
   }
   MPI_Bcast(localB.row_ptr.data(), n + 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-  // Рассылаем данные A всем процессам
-  int a_nnz = static_cast<int>(A.values.size());
-  MPI_Bcast(&a_nnz, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-  CRSMatrix localA;
-  if (rank == 0) {
-    localA = A;
-  } else {
-    localA.n = n;
-    localA.values.resize(a_nnz);
-    localA.col_indices.resize(a_nnz);
-    localA.row_ptr.resize(n + 1);
-  }
-
-  if (a_nnz > 0) {
-    MPI_Bcast(localA.values.data(), a_nnz, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Bcast(localA.col_indices.data(), a_nnz, MPI_INT, 0, MPI_COMM_WORLD);
-  }
-  MPI_Bcast(localA.row_ptr.data(), n + 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   // Распределяем строки матрицы A
   int rows_per_proc = n / size;

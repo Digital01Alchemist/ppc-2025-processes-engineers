@@ -13,26 +13,21 @@ namespace ivanova_p_multiplication_sparse_matrices_crs {
 
 class IvanovaPMultiplicationSparseMatricesCrsPerfTests : public ppc::util::BaseRunPerfTests<InType, OutType> {
  protected:
-  // ИСПРАВЛЕНИЕ: убрано подчеркивание в конце (было kMatrixSize_)
   static constexpr int kMatrixSize = 100000;
-  // ИСПРАВЛЕНИЕ: убрано подчеркивание в конце (было input_data_)
   InType input_data;
 
   void SetUp() override {
-    // ИСПРАВЛЕНИЕ: строчные имена переменных (было A, B)
     CRSMatrix a;
     CRSMatrix b;
 
     a.n = kMatrixSize;
     b.n = kMatrixSize;
 
-    // ИСПРАВЛЕНИЕ: явное приведение к std::size_t
     a.row_ptr.resize(static_cast<std::size_t>(kMatrixSize) + 1);
     b.row_ptr.resize(static_cast<std::size_t>(kMatrixSize) + 1);
 
     // -------- Matrix a --------
     // a(i,i) = 1, a(i,i+1) = 2
-    // ИСПРАВЛЕНИЕ: строчное имя (было nnzA)
     int nnz_a = 0;
     a.row_ptr[0] = 0;
     for (int i = 0; i < kMatrixSize; i++) {
@@ -51,7 +46,6 @@ class IvanovaPMultiplicationSparseMatricesCrsPerfTests : public ppc::util::BaseR
 
     // -------- Matrix b --------
     // b(i,i) = 3
-    // ИСПРАВЛЕНИЕ: строчное имя (было nnzB)
     int nnz_b = 0;
     b.row_ptr[0] = 0;
     for (int i = 0; i < kMatrixSize; i++) {
@@ -89,7 +83,6 @@ class IvanovaPMultiplicationSparseMatricesCrsPerfTests : public ppc::util::BaseR
 
     const auto last_row_ptr = row_ptr.back();
     const auto values_size = static_cast<int>(values.size());
-    // ИСПРАВЛЕНИЕ: прямое возвращение булева выражения
     if (last_row_ptr != values_size) {
       return false;
     }
@@ -102,11 +95,15 @@ class IvanovaPMultiplicationSparseMatricesCrsPerfTests : public ppc::util::BaseR
     }
 
     // корректность индексов столбцов
-    // ИСПРАВЛЕНИЕ: используем std::all_of без отрицания, чтобы избежать избыточного return false/return true
-    const bool all_cols_valid = std::all_of(col_indices.begin(), col_indices.end(),
-                                            [&output_data](int col) { return col >= 0 && col < output_data.n; });
+    // ИСПРАВЛЕНИЕ: используем простой range-based for loop вместо std::all_of
+    // Это устраняет предупреждение clang-tidy о необходимости ranges
+    for (int col : col_indices) {
+      if (col < 0 || col >= output_data.n) {
+        return false;
+      }
+    }
 
-    return all_cols_valid;
+    return true;
   }
 };
 

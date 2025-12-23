@@ -26,7 +26,8 @@ class IvanovaPMultiplicationSparseMatricesCrsFuncTests : public ppc::util::BaseR
     TestType params = std::get<static_cast<size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
 
     int test_id = std::get<0>(params);
-    std::string test_name = std::get<1>(params);
+
+    std::ignore = std::get<1>(params);  // Игнорируем второй элемент, если он не нужен
 
     CRSMatrix a;
     CRSMatrix b;

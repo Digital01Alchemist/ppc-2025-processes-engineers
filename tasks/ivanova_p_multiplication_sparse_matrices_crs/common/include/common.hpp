@@ -42,11 +42,10 @@ inline CRSMatrix MultiplyCRS(const CRSMatrix &A, const CRSMatrix &B) {
   C.row_ptr[0] = 0;
 
   std::unordered_map<int, double> acc;
-  std::vector<int> used_cols;
+  // Убрали used_cols — будем проверять ненулевые значения после вычислений
 
   for (int i = 0; i < A.n; i++) {
     acc.clear();
-    used_cols.clear();
 
     for (int ia = A.row_ptr[i]; ia < A.row_ptr[i + 1]; ia++) {
       int k = A.col_indices[ia];
@@ -54,17 +53,15 @@ inline CRSMatrix MultiplyCRS(const CRSMatrix &A, const CRSMatrix &B) {
 
       for (int ib = B.row_ptr[k]; ib < B.row_ptr[k + 1]; ib++) {
         int col = B.col_indices[ib];
-        auto &val = acc[col];
-        if (val == 0.0) {
-          used_cols.push_back(col);
-        }
-        val += a * B.values[ib];
+        acc[col] += a * B.values[ib];
       }
     }
 
-    for (int col : used_cols) {
-      double val = acc[col];
-      if (val != 0.0) {
+    // Теперь проходим по acc и собираем только ненулевые значения
+    // Можно оптимизировать, если нужна скорость, но для ясности оставим так
+    for (const auto &[col, val] : acc) {
+      // Важно: сравнивать с 0.0 с учётом возможных погрешностей вычислений
+      if (std::abs(val) > 1e-12) {  // или просто if (val != 0.0)
         C.col_indices.push_back(col);
         C.values.push_back(val);
       }
@@ -75,5 +72,4 @@ inline CRSMatrix MultiplyCRS(const CRSMatrix &A, const CRSMatrix &B) {
 
   return C;
 }
-
 }  // namespace ivanova_p_multiplication_sparse_matrices_crs

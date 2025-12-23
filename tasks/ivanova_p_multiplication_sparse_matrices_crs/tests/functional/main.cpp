@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <mpi.h>
 
+#include <array>  // ИСПРАВЛЕНИЕ: добавлен заголовок для std::array
 #include <cstddef>
 #include <string>
 #include <tuple>
@@ -175,7 +176,7 @@ class IvanovaPMultiplicationSparseMatricesCrsFuncTests : public ppc::util::BaseR
     int is_mpi_initialized = 0;
     MPI_Initialized(&is_mpi_initialized);
 
-    if (is_mpi_initialized) {
+    if (is_mpi_initialized != 0) {
       int rank = 0;
       MPI_Comm_rank(MPI_COMM_WORLD, &rank);
       if (rank != 0) {

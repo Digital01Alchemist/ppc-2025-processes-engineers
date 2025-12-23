@@ -28,13 +28,11 @@ struct CRSMatrix {
     if (values.size() != col_indices.size()) {
       return false;
     }
-    // Используем явное приведение типов для сравнения
+
     const auto last_row_ptr = row_ptr.back();
     const auto values_size = static_cast<int>(values.size());
-    if (last_row_ptr != values_size) {
-      return false;
-    }
-    return true;
+    // ИСПРАВЛЕНИЕ: убраны избыточные return false/return true, используем прямое возвращение булева выражения
+    return last_row_ptr == values_size;
   }
 
   bool operator==(const CRSMatrix &other) const {

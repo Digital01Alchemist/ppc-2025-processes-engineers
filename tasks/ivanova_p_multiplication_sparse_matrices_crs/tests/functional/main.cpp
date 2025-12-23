@@ -173,15 +173,19 @@ class IvanovaPMultiplicationSparseMatricesCrsFuncTests : public ppc::util::BaseR
   }
 
   bool CheckTestOutputData(OutType &output_data) override {
-    int rank = 0;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    // Безопасная проверка MPI
+    int is_mpi_initialized = 0;
+    MPI_Initialized(&is_mpi_initialized);
 
-    // Для MPI тестов: только rank 0 проверяет результат
-    // Для SEQ тестов: всегда проверяем
-    if (rank != 0) {
-      return true;  // Не-root процессы всегда проходят проверку
+    if (is_mpi_initialized) {
+      int rank = 0;
+      MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+      if (rank != 0) {
+        return true;  // Не-root процессы MPI
+      }
     }
 
+    // SEQ или MPI root
     return output_data == expected_;
   }
 

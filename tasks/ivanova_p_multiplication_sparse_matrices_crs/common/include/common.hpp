@@ -28,7 +28,10 @@ struct CRSMatrix {
     if (values.size() != col_indices.size()) {
       return false;
     }
-    if (row_ptr.back() != static_cast<int>(values.size())) {
+    // Используем явное приведение типов для сравнения
+    const auto last_row_ptr = row_ptr.back();
+    const auto values_size = static_cast<int>(values.size());
+    if (last_row_ptr != values_size) {
       return false;
     }
     return true;
@@ -41,7 +44,7 @@ struct CRSMatrix {
 
 // -------------------- TYPES --------------------
 
-using InType = std::tuple<CRSMatrix, CRSMatrix>;  // матрицы A и B
+using InType = std::tuple<CRSMatrix, CRSMatrix>;  // матрицы a и b
 using OutType = CRSMatrix;
 using TestType = std::tuple<int, std::string>;
 using BaseTask = ppc::task::Task<InType, OutType>;

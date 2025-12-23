@@ -1,18 +1,16 @@
 #include <gtest/gtest.h>
 #include <mpi.h>
 
-#include <array>
-#include <cmath>
-#include <random>
+#include <cstddef>
 #include <string>
 #include <tuple>
-#include <vector>
 
 #include "ivanova_p_multiplication_sparse_matrices_crs/common/include/common.hpp"
 #include "ivanova_p_multiplication_sparse_matrices_crs/data/matrix_generators.hpp"
 #include "ivanova_p_multiplication_sparse_matrices_crs/mpi/include/ops_mpi.hpp"
 #include "ivanova_p_multiplication_sparse_matrices_crs/seq/include/ops_seq.hpp"
 #include "util/include/func_test_util.hpp"
+#include "util/include/util.hpp"
 
 namespace ivanova_p_multiplication_sparse_matrices_crs {
 
@@ -29,143 +27,143 @@ class IvanovaPMultiplicationSparseMatricesCrsFuncTests : public ppc::util::BaseR
     int test_id = std::get<0>(params);
     std::string test_name = std::get<1>(params);
 
-    CRSMatrix A;
-    CRSMatrix B;
+    CRSMatrix a;
+    CRSMatrix b;
 
     switch (test_id) {
       // === Базовые тесты с единичной матрицей ===
       case 1: {  // I * I = I (3x3)
-        A = CreateIdentityMatrix(3);
-        B = CreateIdentityMatrix(3);
+        a = CreateIdentityMatrix(3);
+        b = CreateIdentityMatrix(3);
         break;
       }
 
       case 3: {  // A * I = A
-        A = CreateTridiagonalMatrix(5, 1.0, 2.0, 3.0);
-        B = CreateIdentityMatrix(5);
+        a = CreateTridiagonalMatrix(5, 1.0, 2.0, 3.0);
+        b = CreateIdentityMatrix(5);
         break;
       }
 
       // === Тесты с нулевой матрицей ===
       case 5: {  // A * 0 = 0
-        A = CreateDiagonalMatrix(4, 5.0);
-        B = CreateZeroMatrix(4);
+        a = CreateDiagonalMatrix(4, 5.0);
+        b = CreateZeroMatrix(4);
         break;
       }
       case 7: {  // 0 * 0 = 0
-        A = CreateZeroMatrix(3);
-        B = CreateZeroMatrix(3);
+        a = CreateZeroMatrix(3);
+        b = CreateZeroMatrix(3);
         break;
       }
 
       // === Диагональные матрицы ===
       case 8: {  // D1 * D2 = D3 (диагонали перемножаются)
-        A = CreateDiagonalMatrix(5, 2.0);
-        B = CreateDiagonalMatrix(5, 3.0);
+        a = CreateDiagonalMatrix(5, 2.0);
+        b = CreateDiagonalMatrix(5, 3.0);
         break;
       }
       case 9: {  // Большая диагональная
-        A = CreateDiagonalMatrix(50, 1.5);
-        B = CreateDiagonalMatrix(50, 2.5);
+        a = CreateDiagonalMatrix(50, 1.5);
+        b = CreateDiagonalMatrix(50, 2.5);
         break;
       }
 
       // === Трёхдиагональные матрицы ===
       case 10: {  // Tri * Tri
-        A = CreateTridiagonalMatrix(5, 1.0, 4.0, 1.0);
-        B = CreateTridiagonalMatrix(5, 1.0, 4.0, 1.0);
+        a = CreateTridiagonalMatrix(5, 1.0, 4.0, 1.0);
+        b = CreateTridiagonalMatrix(5, 1.0, 4.0, 1.0);
         break;
       }
       case 12: {  // Большая трёхдиагональная
-        A = CreateTridiagonalMatrix(20, 1.0, 2.0, 1.0);
-        B = CreateTridiagonalMatrix(20, 0.5, 1.0, 0.5);
+        a = CreateTridiagonalMatrix(20, 1.0, 2.0, 1.0);
+        b = CreateTridiagonalMatrix(20, 0.5, 1.0, 0.5);
         break;
       }
 
       // === Треугольные матрицы ===
       case 13: {  // Upper * Upper
-        A = CreateUpperTriangularMatrix(4, 1.0);
-        B = CreateUpperTriangularMatrix(4, 1.0);
+        a = CreateUpperTriangularMatrix(4, 1.0);
+        b = CreateUpperTriangularMatrix(4, 1.0);
         break;
       }
       case 14: {  // Lower * Lower
-        A = CreateLowerTriangularMatrix(4, 1.0);
-        B = CreateLowerTriangularMatrix(4, 1.0);
+        a = CreateLowerTriangularMatrix(4, 1.0);
+        b = CreateLowerTriangularMatrix(4, 1.0);
         break;
       }
       case 15: {  // Upper * Lower
-        A = CreateUpperTriangularMatrix(5, 1.0);
-        B = CreateLowerTriangularMatrix(5, 1.0);
+        a = CreateUpperTriangularMatrix(5, 1.0);
+        b = CreateLowerTriangularMatrix(5, 1.0);
         break;
       }
       // === Матрицы с одним элементом ===
       case 17: {  // Один элемент в (0,0)
-        A = CreateSingleElementMatrix(4, 0, 0, 5.0);
-        B = CreateSingleElementMatrix(4, 0, 0, 3.0);
+        a = CreateSingleElementMatrix(4, 0, 0, 5.0);
+        b = CreateSingleElementMatrix(4, 0, 0, 3.0);
         break;
       }
       case 19: {  // Несовместимые позиции (результат = 0)
-        A = CreateSingleElementMatrix(4, 0, 0, 5.0);
-        B = CreateSingleElementMatrix(4, 1, 1, 3.0);
+        a = CreateSingleElementMatrix(4, 0, 0, 5.0);
+        b = CreateSingleElementMatrix(4, 1, 1, 3.0);
         break;
       }
 
       // === Матрицы с пустыми строками ===
       case 20: {  // Пустые строки * диагональ
-        A = CreateMatrixWithEmptyRows(6);
-        B = CreateDiagonalMatrix(6, 2.0);
+        a = CreateMatrixWithEmptyRows(6);
+        b = CreateDiagonalMatrix(6, 2.0);
         break;
       }
       // === Антидиагональные матрицы ===
       case 23: {  // Anti * Anti
-        A = CreateAntiDiagonalMatrix(4, 1.0);
-        B = CreateAntiDiagonalMatrix(4, 1.0);
+        a = CreateAntiDiagonalMatrix(4, 1.0);
+        b = CreateAntiDiagonalMatrix(4, 1.0);
         break;
       }
 
       // === Случайные разреженные матрицы ===
       case 27: {  // Низкая плотность 10%
-        A = CreateRandomSparseMatrix(10, 0.1, 42);
-        B = CreateRandomSparseMatrix(10, 0.1, 43);
+        a = CreateRandomSparseMatrix(10, 0.1, 42);
+        b = CreateRandomSparseMatrix(10, 0.1, 43);
         break;
       }
       case 29: {  // Высокая плотность 50%
-        A = CreateRandomSparseMatrix(6, 0.5, 46);
-        B = CreateRandomSparseMatrix(6, 0.5, 47);
+        a = CreateRandomSparseMatrix(6, 0.5, 46);
+        b = CreateRandomSparseMatrix(6, 0.5, 47);
         break;
       }
       // === Специальные значения ===
       case 31: {  // Отрицательные значения
-        A = CreateDiagonalMatrix(5, -2.0);
-        B = CreateDiagonalMatrix(5, -3.0);
+        a = CreateDiagonalMatrix(5, -2.0);
+        b = CreateDiagonalMatrix(5, -3.0);
         break;
       }
       case 32: {  // Смешанные знаки
-        A = CreateTridiagonalMatrix(5, -1.0, 2.0, -1.0);
-        B = CreateTridiagonalMatrix(5, 1.0, -2.0, 1.0);
+        a = CreateTridiagonalMatrix(5, -1.0, 2.0, -1.0);
+        b = CreateTridiagonalMatrix(5, 1.0, -2.0, 1.0);
         break;
       }
       // === Граничные размеры ===
       case 35: {  // Минимальный размер 1x1
-        A = CreateDiagonalMatrix(1, 5.0);
-        B = CreateDiagonalMatrix(1, 3.0);
+        a = CreateDiagonalMatrix(1, 5.0);
+        b = CreateDiagonalMatrix(1, 3.0);
         break;
       }
       case 36: {  // Размер 2x2
-        A = CreateTridiagonalMatrix(2, 1.0, 2.0, 3.0);
-        B = CreateTridiagonalMatrix(2, 4.0, 5.0, 6.0);
+        a = CreateTridiagonalMatrix(2, 1.0, 2.0, 3.0);
+        b = CreateTridiagonalMatrix(2, 4.0, 5.0, 6.0);
         break;
       }
       default: {
         // Fallback: диагональные матрицы
-        A = CreateDiagonalMatrix(3, 1.0);
-        B = CreateDiagonalMatrix(3, 1.0);
+        a = CreateDiagonalMatrix(3, 1.0);
+        b = CreateDiagonalMatrix(3, 1.0);
         break;
       }
     }
 
-    input_data_ = std::make_tuple(A, B);
-    expected_ = MultiplyCRS(A, B);
+    input_data_ = std::make_tuple(a, b);
+    expected_ = MultiplyCRS(a, b);
   }
 
   InType GetTestInputData() override {
@@ -196,7 +194,7 @@ class IvanovaPMultiplicationSparseMatricesCrsFuncTests : public ppc::util::BaseR
 
 namespace {
 
-TEST_P(IvanovaPMultiplicationSparseMatricesCrsFuncTests, CRSxCRS_Multiplication) {
+TEST_P(IvanovaPMultiplicationSparseMatricesCrsFuncTests, CRSxCRSMultiplication) {
   ExecuteTest(GetParam());
 }
 

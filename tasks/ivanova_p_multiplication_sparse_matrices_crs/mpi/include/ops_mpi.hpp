@@ -21,7 +21,7 @@ class IvanovaPMultiplicationSparseMatricesCrsMPI : public BaseTask {
   bool PostProcessingImpl() override;
 
   // Вспомогательные методы
-  void MultiplyLocalRows(const CRSMatrix &A, const CRSMatrix &B, int start_row, int end_row,
+  void MultiplyLocalRows(const CRSMatrix &a, const CRSMatrix &b, int start_row, int end_row,
                          std::vector<double> &values, std::vector<int> &col_indices, std::vector<int> &row_ptr);
 };
 

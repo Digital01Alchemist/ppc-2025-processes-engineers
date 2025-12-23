@@ -1,5 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <cstddef>
+#include <tuple>
+
 #include "ivanova_p_multiplication_sparse_matrices_crs/common/include/common.hpp"
 #include "ivanova_p_multiplication_sparse_matrices_crs/mpi/include/ops_mpi.hpp"
 #include "ivanova_p_multiplication_sparse_matrices_crs/seq/include/ops_seq.hpp"
@@ -9,53 +13,53 @@ namespace ivanova_p_multiplication_sparse_matrices_crs {
 
 class IvanovaPMultiplicationSparseMatricesCrsPerfTests : public ppc::util::BaseRunPerfTests<InType, OutType> {
  protected:
-  static constexpr int kMatrixSize_ = 100000;
-  InType input_data_{};
+  static constexpr int kMatrixSize = 100000;
+  InType input_data;
 
   void SetUp() override {
-    CRSMatrix A;
-    CRSMatrix B;
+    CRSMatrix a;
+    CRSMatrix b;
 
-    A.n = kMatrixSize_;
-    B.n = kMatrixSize_;
+    a.n = kMatrixSize;
+    b.n = kMatrixSize;
 
-    A.row_ptr.resize(kMatrixSize_ + 1);
-    B.row_ptr.resize(kMatrixSize_ + 1);
+    a.row_ptr.resize(static_cast<std::size_t>(kMatrixSize) + 1);
+    b.row_ptr.resize(static_cast<std::size_t>(kMatrixSize) + 1);
 
-    // -------- Matrix A --------
-    // A(i,i) = 1, A(i,i+1) = 2
-    int nnzA = 0;
-    A.row_ptr[0] = 0;
-    for (int i = 0; i < kMatrixSize_; i++) {
-      A.col_indices.push_back(i);
-      A.values.push_back(1.0);
-      nnzA++;
+    // -------- Matrix a --------
+    // a(i,i) = 1, a(i,i+1) = 2
+    int nnz_a = 0;
+    a.row_ptr[0] = 0;
+    for (int i = 0; i < kMatrixSize; i++) {
+      a.col_indices.push_back(i);
+      a.values.push_back(1.0);
+      nnz_a++;
 
-      if (i + 1 < kMatrixSize_) {
-        A.col_indices.push_back(i + 1);
-        A.values.push_back(2.0);
-        nnzA++;
+      if (i + 1 < kMatrixSize) {
+        a.col_indices.push_back(i + 1);
+        a.values.push_back(2.0);
+        nnz_a++;
       }
 
-      A.row_ptr[i + 1] = nnzA;
+      a.row_ptr[i + 1] = nnz_a;
     }
 
-    // -------- Matrix B --------
-    // B(i,i) = 3
-    int nnzB = 0;
-    B.row_ptr[0] = 0;
-    for (int i = 0; i < kMatrixSize_; i++) {
-      B.col_indices.push_back(i);
-      B.values.push_back(3.0);
-      nnzB++;
-      B.row_ptr[i + 1] = nnzB;
+    // -------- Matrix b --------
+    // b(i,i) = 3
+    int nnz_b = 0;
+    b.row_ptr[0] = 0;
+    for (int i = 0; i < kMatrixSize; i++) {
+      b.col_indices.push_back(i);
+      b.values.push_back(3.0);
+      nnz_b++;
+      b.row_ptr[i + 1] = nnz_b;
     }
 
-    input_data_ = std::make_tuple(A, B);
+    input_data = std::make_tuple(a, b);
   }
 
   InType GetTestInputData() final {
-    return input_data_;
+    return input_data;
   }
 
   bool CheckTestOutputData(OutType &output_data) final {
@@ -77,22 +81,23 @@ class IvanovaPMultiplicationSparseMatricesCrsPerfTests : public ppc::util::BaseR
       return false;
     }
 
-    if (row_ptr.back() != static_cast<int>(values.size())) {
+    const auto last_row_ptr = row_ptr.back();
+    const auto values_size = static_cast<int>(values.size());
+    if (last_row_ptr != values_size) {
       return false;
     }
 
     // row_ptr монотонно неубывающий
-    for (size_t i = 0; i + 1 < row_ptr.size(); i++) {
+    for (std::size_t i = 0; i + 1 < row_ptr.size(); i++) {
       if (row_ptr[i] > row_ptr[i + 1]) {
         return false;
       }
     }
 
     // корректность индексов столбцов
-    for (int col : col_indices) {
-      if (col < 0 || col >= output_data.n) {
-        return false;
-      }
+    if (!std::all_of(col_indices.begin(), col_indices.end(),
+                     [&output_data](int col) { return col >= 0 && col < output_data.n; })) {
+      return false;
     }
 
     return true;

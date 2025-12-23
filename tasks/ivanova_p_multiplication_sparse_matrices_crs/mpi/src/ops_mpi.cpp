@@ -43,9 +43,11 @@ bool IvanovaPMultiplicationSparseMatricesCrsMPI::RunImpl() {
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   const auto &[A, B] = GetInput();
-  int n = A.n;
 
-  // Рассылаем матрицу B всем процессам
+  // Рассылаем размер матрицы и данные B всем процессам
+  int n = A.n;
+  MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
   int b_nnz = static_cast<int>(B.values.size());
   MPI_Bcast(&b_nnz, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
@@ -61,9 +63,31 @@ bool IvanovaPMultiplicationSparseMatricesCrsMPI::RunImpl() {
   }
 
   // Рассылаем данные B
-  MPI_Bcast(localB.values.data(), b_nnz, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-  MPI_Bcast(localB.col_indices.data(), b_nnz, MPI_INT, 0, MPI_COMM_WORLD);
+  if (b_nnz > 0) {
+    MPI_Bcast(localB.values.data(), b_nnz, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(localB.col_indices.data(), b_nnz, MPI_INT, 0, MPI_COMM_WORLD);
+  }
   MPI_Bcast(localB.row_ptr.data(), n + 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+  // Рассылаем данные A всем процессам
+  int a_nnz = static_cast<int>(A.values.size());
+  MPI_Bcast(&a_nnz, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+  CRSMatrix localA;
+  if (rank == 0) {
+    localA = A;
+  } else {
+    localA.n = n;
+    localA.values.resize(a_nnz);
+    localA.col_indices.resize(a_nnz);
+    localA.row_ptr.resize(n + 1);
+  }
+
+  if (a_nnz > 0) {
+    MPI_Bcast(localA.values.data(), a_nnz, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(localA.col_indices.data(), a_nnz, MPI_INT, 0, MPI_COMM_WORLD);
+  }
+  MPI_Bcast(localA.row_ptr.data(), n + 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   // Распределяем строки матрицы A
   int rows_per_proc = n / size;
@@ -74,8 +98,10 @@ bool IvanovaPMultiplicationSparseMatricesCrsMPI::RunImpl() {
   // Локальная часть матрицы C
   CRSMatrix localC;
   localC.n = n;
-  localC.row_ptr.resize(count + 1);
-  localC.row_ptr[0] = 0;
+  localC.row_ptr.resize(static_cast<size_t>(count) + 1);
+  if (!localC.row_ptr.empty()) {
+    localC.row_ptr[0] = 0;
+  }
 
   // Умножаем локальные строки (оптимизированная версия)
   std::unordered_map<int, double> acc;
@@ -86,9 +112,9 @@ bool IvanovaPMultiplicationSparseMatricesCrsMPI::RunImpl() {
     acc.clear();
     used_cols.clear();
 
-    for (int ia = A.row_ptr[global_row]; ia < A.row_ptr[global_row + 1]; ia++) {
-      int k = A.col_indices[ia];
-      double a = A.values[ia];
+    for (int ia = localA.row_ptr[global_row]; ia < localA.row_ptr[global_row + 1]; ia++) {
+      int k = localA.col_indices[ia];
+      double a = localA.values[ia];
 
       for (int ib = localB.row_ptr[k]; ib < localB.row_ptr[k + 1]; ib++) {
         int col = localB.col_indices[ib];
@@ -133,18 +159,23 @@ bool IvanovaPMultiplicationSparseMatricesCrsMPI::RunImpl() {
       int p_start = p * rows_per_proc + std::min(p, extra);
       int p_count = rows_per_proc + (p < extra ? 1 : 0);
 
+      if (p_count == 0) {
+        continue;
+      }
+
       // Получаем количество ненулевых элементов
       int p_nnz;
       MPI_Recv(&p_nnz, 1, MPI_INT, p, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
+      std::vector<int> p_row_ptr(static_cast<size_t>(p_count) + 1);
+      MPI_Recv(p_row_ptr.data(), p_count + 1, MPI_INT, p, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
       if (p_nnz > 0) {
         std::vector<double> p_vals(p_nnz);
         std::vector<int> p_cols(p_nnz);
-        std::vector<int> p_row_ptr(p_count + 1);
 
         MPI_Recv(p_vals.data(), p_nnz, MPI_DOUBLE, p, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         MPI_Recv(p_cols.data(), p_nnz, MPI_INT, p, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Recv(p_row_ptr.data(), p_count + 1, MPI_INT, p, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
         // Конвертируем локальные индексы в глобальные
         int base = static_cast<int>(C.values.size());
@@ -163,13 +194,15 @@ bool IvanovaPMultiplicationSparseMatricesCrsMPI::RunImpl() {
     }
   } else {
     // Отправляем данные на процесс 0
-    int local_nnz = static_cast<int>(localC.values.size());
-    MPI_Send(&local_nnz, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-
-    if (local_nnz > 0) {
-      MPI_Send(localC.values.data(), local_nnz, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
-      MPI_Send(localC.col_indices.data(), local_nnz, MPI_INT, 0, 2, MPI_COMM_WORLD);
+    if (count > 0) {
+      int local_nnz = static_cast<int>(localC.values.size());
+      MPI_Send(&local_nnz, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
       MPI_Send(localC.row_ptr.data(), count + 1, MPI_INT, 0, 3, MPI_COMM_WORLD);
+
+      if (local_nnz > 0) {
+        MPI_Send(localC.values.data(), local_nnz, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
+        MPI_Send(localC.col_indices.data(), local_nnz, MPI_INT, 0, 2, MPI_COMM_WORLD);
+      }
     }
   }
 
